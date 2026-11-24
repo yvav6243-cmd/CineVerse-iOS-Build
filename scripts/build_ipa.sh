@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ==============================================================================
-# CineVerse — Automated Release arm64 IPA Builder (macOS / Xcode)
+# CineVerse вЂ” Automated Release arm64 IPA Builder (macOS / Xcode)
 # Supports:
 #   1. Sideloadly / AltStore unsigned Release arm64 IPA (default: --sideload)
 #   2. Signed Release arm64 IPA via Apple Development / Ad Hoc / Distribution
@@ -35,7 +35,7 @@ if [[ "$MODE" == "--sideload" ]]; then
     echo "==> Building Release arm64 CineVerse.app for Sideloadly / AltStore..."
     xcodebuild \
         -project CineVerse.xcodeproj \
-        -target CineVerse \
+        -scheme CineVerse \
         -configuration Release \
         -sdk iphoneos \
         -derivedDataPath "$DERIVED_DATA" \
