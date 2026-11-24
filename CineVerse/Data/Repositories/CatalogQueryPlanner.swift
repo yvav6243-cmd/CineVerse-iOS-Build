@@ -5,6 +5,7 @@ public enum CatalogPlannedRequest: Sendable {
     case tmdbTV(TMDBDiscoverParameters, excludeJapanese: Bool)
     case aniList(AniListSearchParameters)
     case tvMazeIndex(page: Int)
+    case iTunesCategory(MediaProjectType, page: Int)
 }
 
 public enum CatalogQueryPlanner {
@@ -18,7 +19,7 @@ public enum CatalogQueryPlanner {
         case .movie:
             return hasTMDBCredential
                 ? [.tmdbMovies(makeTMDBMovieParams(criteria: criteria, page: page, language: language, withGenres: [], withoutGenres: [16, 99]), excludeJapanese: false)]
-                : []
+                : [.iTunesCategory(.movie, page: page)]
 
         case .anime:
             return [.aniList(makeAniListParams(criteria: criteria, page: page, formats: ["TV", "TV_SHORT", "ONA"]))]
@@ -31,6 +32,8 @@ public enum CatalogQueryPlanner {
                 var p = makeTMDBMovieParams(criteria: criteria, page: page, language: language, withGenres: [16], withoutGenres: [])
                 p.originalLanguage = "ja"
                 requests.append(.tmdbMovies(p, excludeJapanese: false))
+            } else if page == 1 {
+                requests.append(.iTunesCategory(.animeMovie, page: page))
             }
             return requests
 
@@ -42,15 +45,24 @@ public enum CatalogQueryPlanner {
             }
 
         case .cartoonSeries:
-            guard hasTMDBCredential else { return [.tvMazeIndex(page: page)] }
+            guard hasTMDBCredential else {
+                return [.tvMazeIndex(page: page * 2 - 1), .tvMazeIndex(page: page * 2)]
+            }
             return [.tmdbTV(makeTMDBTVParams(criteria: criteria, page: page, language: language, withGenres: [16], withoutGenres: []), excludeJapanese: true)]
 
         case .cartoonMovie:
-            guard hasTMDBCredential else { return [] }
+            guard hasTMDBCredential else {
+                return [.iTunesCategory(.cartoonMovie, page: page)]
+            }
             return [.tmdbMovies(makeTMDBMovieParams(criteria: criteria, page: page, language: language, withGenres: [16], withoutGenres: []), excludeJapanese: true)]
 
         case .drama:
-            guard hasTMDBCredential else { return [] }
+            guard hasTMDBCredential else {
+                return [
+                    .iTunesCategory(.drama, page: page),
+                    .tvMazeIndex(page: page)
+                ]
+            }
             var p = makeTMDBTVParams(criteria: criteria, page: page, language: language, withGenres: [18], withoutGenres: [16])
             if p.originCountry == nil {
                 p.originCountry = "KR|CN|TW|TH|JP"
@@ -58,17 +70,31 @@ public enum CatalogQueryPlanner {
             return [.tmdbTV(p, excludeJapanese: false)]
 
         case .documentary:
-            guard hasTMDBCredential else { return [] }
+            guard hasTMDBCredential else {
+                return [
+                    .iTunesCategory(.documentary, page: page),
+                    .tvMazeIndex(page: page * 2 - 1),
+                    .tvMazeIndex(page: page * 2)
+                ]
+            }
             return [
                 .tmdbMovies(makeTMDBMovieParams(criteria: criteria, page: page, language: language, withGenres: [99], withoutGenres: []), excludeJapanese: false),
                 .tmdbTV(makeTMDBTVParams(criteria: criteria, page: page, language: language, withGenres: [99], withoutGenres: []), excludeJapanese: false)
             ]
 
         case .special:
-            return [.aniList(makeAniListParams(criteria: criteria, page: page, formats: ["OVA", "SPECIAL", "MUSIC"]))]
+            var requests: [CatalogPlannedRequest] = [
+                .aniList(makeAniListParams(criteria: criteria, page: page, formats: ["OVA", "SPECIAL", "MUSIC"]))
+            ]
+            if page == 1 {
+                requests.append(.iTunesCategory(.special, page: 1))
+            }
+            return requests
 
         case .other:
-            guard hasTMDBCredential else { return [.tvMazeIndex(page: page)] }
+            guard hasTMDBCredential else {
+                return [.tvMazeIndex(page: page * 2 - 1), .tvMazeIndex(page: page * 2)]
+            }
             var p = makeTMDBTVParams(criteria: criteria, page: page, language: language, withGenres: [], withoutGenres: [])
             p.tvTypeCode = "3|5|6"
             return [.tmdbTV(p, excludeJapanese: false)]
@@ -79,6 +105,7 @@ public enum CatalogQueryPlanner {
                 requests.append(.tmdbMovies(makeTMDBMovieParams(criteria: criteria, page: page, language: language, withGenres: [], withoutGenres: []), excludeJapanese: false))
                 requests.append(.tmdbTV(makeTMDBTVParams(criteria: criteria, page: page, language: language, withGenres: [], withoutGenres: []), excludeJapanese: false))
             } else {
+                requests.append(.iTunesCategory(.movie, page: page))
                 requests.append(.tvMazeIndex(page: page))
             }
             requests.append(.aniList(makeAniListParams(criteria: criteria, page: page, formats: nil)))
@@ -93,8 +120,19 @@ public enum CatalogQueryPlanner {
         excludeJapaneseForCartoons: Bool = false
     ) -> [MediaItem] {
         let filtered = items.filter { item in
-            if let category = criteria.selectedCategory, item.projectType != category {
-                return false
+            if let category = criteria.selectedCategory {
+                if category == .drama {
+                    let hasDramaGenre = item.genres.contains { $0.localizedCaseInsensitiveContains("drama") }
+                    if item.projectType != .drama && !hasDramaGenre {
+                        return false
+                    }
+                } else if category == .special {
+                    if item.projectType != .special && item.primarySource != .openCinema {
+                        return false
+                    }
+                } else if item.projectType != category {
+                    return false
+                }
             }
             if excludeJapaneseForCartoons && item.originalLanguage.lowercased() == "ja" {
                 return false

@@ -44,7 +44,7 @@ public final class InternetArchiveService: InternetArchiveServiceProtocol, @unch
                 URLQueryItem(name: "rows", value: "8"),
                 URLQueryItem(name: "output", value: "json")
             ],
-            timeoutInterval: 12
+            timeoutInterval: 3.5
         )
 
         let searchResult = try await httpClient.send(searchEndpoint, as: IAArchiveSearchResponseDTO.self)
@@ -66,7 +66,7 @@ public final class InternetArchiveService: InternetArchiveServiceProtocol, @unch
         let metadataEndpoint = Endpoint(
             baseURL: baseURL,
             path: "metadata/\(doc.identifier)",
-            timeoutInterval: 12
+            timeoutInterval: 3.5
         )
         let metadata = try await httpClient.send(metadataEndpoint, as: IAMetadataResponseDTO.self)
         let files = metadata.files ?? []

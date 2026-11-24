@@ -14,6 +14,7 @@ public final class AppContainer {
     public let aniListService: AniListServiceProtocol
     public let tvMazeService: TVMazeServiceProtocol
     public let jikanService: JikanServiceProtocol
+    public let iTunesService: ITunesCatalogServiceProtocol
     public let internetArchiveService: InternetArchiveServiceProtocol
 
     public let catalogRepository: CatalogRepositoryProtocol
@@ -44,12 +45,14 @@ public final class AppContainer {
         self.aniListService = AniListService(httpClient: httpClient)
         self.tvMazeService = TVMazeService(httpClient: httpClient)
         self.jikanService = JikanService(httpClient: httpClient)
+        self.iTunesService = ITunesCatalogService(httpClient: httpClient)
         self.internetArchiveService = InternetArchiveService(httpClient: httpClient)
 
         self.catalogRepository = CatalogRepository(
             tmdb: tmdbService,
             aniList: aniListService,
             tvMaze: tvMazeService,
+            iTunes: iTunesService,
             cache: responseCache
         )
         self.detailsRepository = DetailsRepository(
@@ -57,6 +60,7 @@ public final class AppContainer {
             aniList: aniListService,
             tvMaze: tvMazeService,
             jikan: jikanService,
+            iTunes: iTunesService,
             cache: responseCache
         )
         self.calendarRepository = CalendarRepository(
@@ -78,7 +82,8 @@ public final class AppContainer {
         self.sourceManager = VideoSourceManager(
             modelContext: context,
             httpClient: httpClient,
-            internetArchiveService: internetArchiveService
+            internetArchiveService: internetArchiveService,
+            iTunesService: iTunesService
         )
         self.trackerService = TrackerService(
             libraryRepository: libRepo,

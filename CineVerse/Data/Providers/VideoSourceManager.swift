@@ -14,6 +14,7 @@ public final class VideoSourceManager {
         modelContext: ModelContext,
         httpClient: HTTPClient,
         internetArchiveService: InternetArchiveServiceProtocol,
+        iTunesService: ITunesCatalogServiceProtocol = ITunesCatalogService(httpClient: URLSessionHTTPClient()),
         videoStore: LocalVideoStore = .shared
     ) {
         self.modelContext = modelContext
@@ -38,6 +39,7 @@ public final class VideoSourceManager {
         self.providers = [
             LocalFileSourceProvider(videoStore: videoStore, fetchSources: fetchClosure),
             DirectLinkSourceProvider(videoStore: videoStore, fetchSources: fetchClosure),
+            OpenStreamSourceProvider(iTunesService: iTunesService),
             InternetArchiveSourceProvider(service: internetArchiveService),
             OfficialServicesProvider()
         ]

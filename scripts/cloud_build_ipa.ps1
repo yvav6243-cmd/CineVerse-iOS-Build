@@ -59,7 +59,7 @@ try {
 } catch {
     $body = @{
         name        = $repoName
-        private     = $true
+        private     = $false
         auto_init   = $true
         description = "CineVerse iOS arm64 IPA cloud builder"
     } | ConvertTo-Json
@@ -165,15 +165,19 @@ $newCommit = Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$repoNa
 $updateRefBody = @{ sha = $newCommit.sha; force = $true } | ConvertTo-Json
 Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$repoName/git/refs/heads/$defaultBranch" -Headers $headers -Method Patch -Body $updateRefBody -ContentType "application/json" | Out-Null
 
-Write-Host "[4/5] Запуск workflow сборки Xcode (macos-15) в GitHub Actions (commit $($newCommit.sha.Substring(0,8)))..." -ForegroundColor Cyan
-Start-Sleep -Seconds 3
-$dispatchBody = @{ ref = $defaultBranch } | ConvertTo-Json
-try {
-    Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$repoName/actions/workflows/build-ipa.yml/dispatches" -Headers $headers -Method Post -Body $dispatchBody -ContentType "application/json" | Out-Null
-} catch {
-    Write-Host "      Примечание при dispatch: $($_.Exception.Message)" -ForegroundColor Yellow
+Write-Host "[4/5] Запуск workflow сборки Xcode (macos-15-intel) в GitHub Actions (commit $($newCommit.sha.Substring(0,8)))..." -ForegroundColor Cyan
+Start-Sleep -Seconds 6
+$initialRuns = Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$repoName/actions/runs?per_page=5" -Headers $headers -Method Get
+$existingRun = $initialRuns.workflow_runs | Where-Object { $_.head_sha -eq $newCommit.sha } | Select-Object -First 1
+if (-not $existingRun) {
+    $dispatchBody = @{ ref = $defaultBranch; inputs = @{ runner = "macos-15-intel" } } | ConvertTo-Json
+    try {
+        Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$repoName/actions/workflows/build-ipa.yml/dispatches" -Headers $headers -Method Post -Body $dispatchBody -ContentType "application/json" | Out-Null
+    } catch {
+        Write-Host "      Примечание при dispatch: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+    Start-Sleep -Seconds 4
 }
-Start-Sleep -Seconds 5
 
 $artifactId = $null
 $runId = $null

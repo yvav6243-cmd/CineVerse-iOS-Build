@@ -4,9 +4,55 @@ import PhotosUI
 import ImageIO
 import UIKit
 
+private enum ProfileAvatarPreset: String, CaseIterable, Identifiable {
+    case prism
+    case cinema
+    case aurora
+    case sakura
+    case eclipse
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .prism: return "Prism"
+        case .cinema: return "Cinema"
+        case .aurora: return "Aurora"
+        case .sakura: return "Neon"
+        case .eclipse: return "Eclipse"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .prism: return "play.fill"
+        case .cinema: return "film.stack.fill"
+        case .aurora: return "sparkles.tv.fill"
+        case .sakura: return "sparkles"
+        case .eclipse: return "moon.stars.fill"
+        }
+    }
+
+    var colors: [Color] {
+        switch self {
+        case .prism:
+            return [Color(hex: "#1ECFFF"), Color(hex: "#6E5BFF"), Color(hex: "#F03AB6")]
+        case .cinema:
+            return [Color(hex: "#FFB830"), Color(hex: "#FF4D6D"), Color(hex: "#5B2EFF")]
+        case .aurora:
+            return [Color(hex: "#14F195"), Color(hex: "#00C2FF"), Color(hex: "#4B50FF")]
+        case .sakura:
+            return [Color(hex: "#FF5CA8"), Color(hex: "#A855F7"), Color(hex: "#4338CA")]
+        case .eclipse:
+            return [Color(hex: "#94A3B8"), Color(hex: "#6366F1"), Color(hex: "#0F172A")]
+        }
+    }
+}
+
 public struct ProfileView: View {
     let container: AppContainer
 
+    @AppStorage("cv_avatar_preset") private var avatarPresetRaw: String = ProfileAvatarPreset.prism.rawValue
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showNameEditor: Bool = false
     @State private var draftName: String = ""
@@ -63,58 +109,103 @@ public struct ProfileView: View {
         }
     }
 
+    private var activePreset: ProfileAvatarPreset {
+        ProfileAvatarPreset(rawValue: avatarPresetRaw) ?? .prism
+    }
+
     private var profileHeaderSection: some View {
         Section {
-            HStack(spacing: CVSpacing.md) {
-                avatarView
+            VStack(alignment: .leading, spacing: CVSpacing.md) {
+                HStack(spacing: CVSpacing.md) {
+                    avatarView
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(container.settingsStore.profileName)
-                        .font(CVFont.sectionTitle)
-                        .foregroundStyle(.primary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(container.settingsStore.profileName)
+                            .font(CVFont.sectionTitle)
+                            .foregroundStyle(.primary)
 
-                    Text("Local Profile • On-Device Library")
-                        .font(CVFont.caption)
-                        .foregroundStyle(.secondary)
+                        Text("CineVerse Collector • On-Device")
+                            .font(CVFont.caption)
+                            .foregroundStyle(.secondary)
 
-                    HStack(spacing: CVSpacing.sm) {
-                        PhotosPicker(
-                            selection: $selectedPhotoItem,
-                            matching: .images,
-                            photoLibrary: .shared()
-                        ) {
-                            Label("Change Photo", systemImage: "photo")
-                                .font(CVFont.caption.weight(.semibold))
-                        }
-                        .buttonStyle(.borderless)
-
-                        if container.settingsStore.avatarData != nil {
-                            Button(role: .destructive) {
-                                container.settingsStore.avatarData = nil
-                            } label: {
-                                Text("Remove")
-                                    .font(CVFont.caption)
+                        HStack(spacing: CVSpacing.sm) {
+                            PhotosPicker(
+                                selection: $selectedPhotoItem,
+                                matching: .images,
+                                photoLibrary: .shared()
+                            ) {
+                                Label("Custom Photo", systemImage: "photo.badge.plus")
+                                    .font(CVFont.caption.weight(.semibold))
                             }
                             .buttonStyle(.borderless)
+
+                            if container.settingsStore.avatarData != nil {
+                                Button(role: .destructive) {
+                                    Haptics.selection()
+                                    container.settingsStore.avatarData = nil
+                                } label: {
+                                    Text("Use Crest")
+                                        .font(CVFont.caption)
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                        }
+                        .padding(.top, 2)
+                    }
+
+                    Spacer()
+
+                    Button {
+                        draftName = container.settingsStore.profileName
+                        showNameEditor = true
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(CVColor.iris)
+                            .frame(width: 34, height: 34)
+                            .background(CVColor.iris.opacity(0.14), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Edit Display Name")
+                }
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: CVSpacing.xs) {
+                        ForEach(ProfileAvatarPreset.allCases) { preset in
+                            let isSelected = container.settingsStore.avatarData == nil && activePreset == preset
+                            Button {
+                                Haptics.selection()
+                                container.settingsStore.avatarData = nil
+                                avatarPresetRaw = preset.rawValue
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(LinearGradient(colors: preset.colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                                        .frame(width: 16, height: 16)
+                                        .overlay(
+                                            Image(systemName: preset.symbolName)
+                                                .font(.system(size: 8, weight: .bold))
+                                                .foregroundStyle(.white)
+                                        )
+                                    Text(preset.title)
+                                        .font(CVFont.micro.weight(.semibold))
+                                        .foregroundStyle(isSelected ? .primary : .secondary)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    isSelected ? CVColor.iris.opacity(0.18) : Color(.tertiarySystemFill),
+                                    in: Capsule(style: .continuous)
+                                )
+                                .overlay(
+                                    Capsule(style: .continuous)
+                                        .strokeBorder(isSelected ? CVColor.iris.opacity(0.6) : Color.clear, lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
-                    .padding(.top, 2)
                 }
-
-                Spacer()
-
-                Button {
-                    draftName = container.settingsStore.profileName
-                    showNameEditor = true
-                } label: {
-                    Image(systemName: "pencil")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(CVColor.iris)
-                        .frame(width: 34, height: 34)
-                        .background(CVColor.iris.opacity(0.14), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Edit Display Name")
             }
             .padding(.vertical, CVSpacing.xs)
         }
@@ -122,37 +213,75 @@ public struct ProfileView: View {
 
     @ViewBuilder
     private var avatarView: some View {
+        let preset = activePreset
         ZStack {
-            if let data = container.settingsStore.avatarData,
-               let uiImage = UIImage(data: data) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                LinearGradient(
-                    colors: [CVColor.iris, CVColor.iris.opacity(0.6)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: preset.colors,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 )
-                .overlay {
-                    Image(systemName: "person.fill")
-                        .font(.title)
-                        .foregroundStyle(.white)
+                .blur(radius: 6)
+                .opacity(0.45)
+                .frame(width: 82, height: 82)
+
+            ZStack {
+                if let data = container.settingsStore.avatarData,
+                   let uiImage = UIImage(data: data) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    LinearGradient(
+                        colors: preset.colors,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    RadialGradient(
+                        colors: [Color.white.opacity(0.38), Color.clear],
+                        center: .topLeading,
+                        startRadius: 2,
+                        endRadius: 56
+                    )
+                    Circle()
+                        .strokeBorder(Color.white.opacity(0.28), lineWidth: 1.5)
+                        .padding(5)
+
+                    Image(systemName: preset.symbolName)
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.white, Color.white.opacity(0.88)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .shadow(color: Color.black.opacity(0.28), radius: 6, x: 0, y: 3)
+                }
+
+                if isProcessingAvatar {
+                    Color.black.opacity(0.4)
+                    ProgressView()
+                        .tint(.white)
                 }
             }
-
-            if isProcessingAvatar {
-                Color.black.opacity(0.4)
-                ProgressView()
-                    .tint(.white)
-            }
+            .frame(width: 78, height: 78)
+            .clipShape(Circle())
+            .overlay(
+                Circle()
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.65), preset.colors.first ?? CVColor.iris, Color.white.opacity(0.18)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 2
+                    )
+            )
+            .shadow(color: (preset.colors.first ?? CVColor.iris).opacity(0.32), radius: 10, x: 0, y: 4)
         }
-        .frame(width: 72, height: 72)
-        .clipShape(Circle())
-        .overlay(
-            Circle()
-                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
-        )
     }
 
     private var quickStatsSection: some View {

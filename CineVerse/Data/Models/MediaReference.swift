@@ -44,6 +44,10 @@ public struct MediaReference: Hashable, Codable, Sendable {
         case .tvMaze:
             return URL(string: "https://www.tvmaze.com/shows/\(providerID)")
         case .openCinema:
+            if providerID.hasPrefix("itunes-") {
+                let idDigits = providerID.replacingOccurrences(of: "itunes-", with: "")
+                return URL(string: "https://itunes.apple.com/us/movie/id\(idDigits)")
+            }
             return nil
         }
     }

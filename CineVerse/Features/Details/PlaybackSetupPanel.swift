@@ -329,36 +329,50 @@ public struct PlaybackSetupPanel: View {
     private var noPlayableSourceFallback: some View {
         VStack(alignment: .leading, spacing: CVSpacing.sm) {
             HStack(spacing: CVSpacing.sm) {
-                Image(systemName: "film.stack")
+                Image(systemName: "play.rectangle.on.rectangle.fill")
                     .font(.title3.weight(.semibold))
-                    .foregroundStyle(CVColor.warning)
+                    .foregroundStyle(CVColor.iris)
                     .frame(width: 38, height: 38)
-                    .background(CVColor.warning.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .background(CVColor.iris.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("No Playable Stream Attached").font(CVFont.cardTitle)
+                    Text("Instant Web & Custom Playback").font(CVFont.cardTitle)
                     Text(fallbackDescription).font(CVFont.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             }
 
-            VStack(spacing: CVSpacing.xs) {
-                Button { Haptics.impact(.light); onOpenAddSource(.link) } label: {
-                    Label("Add Direct Link (.m3u8 / .mp4)", systemImage: "link.badge.plus").frame(maxWidth: .infinity)
-                }.buttonStyle(CVPrimaryButtonStyle(compact: true))
+            if let instantURL = instantFallbackURL {
+                Button {
+                    Haptics.impact(.medium)
+                    onOpenOfficialURL(instantURL)
+                } label: {
+                    Label(
+                        item.trailerURL != nil ? "Watch Official Video Player" : "Open Instant Video Preview",
+                        systemImage: "play.fill"
+                    )
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(CVPrimaryButtonStyle())
+            }
 
+            HStack(spacing: CVSpacing.xs) {
                 Button { Haptics.impact(.light); onOpenAddSource(.file) } label: {
-                    Label("Import Local Video File", systemImage: "folder.badge.plus").frame(maxWidth: .infinity)
+                    Label("Local File", systemImage: "folder.badge.plus").frame(maxWidth: .infinity)
+                }.buttonStyle(CVGlassButtonStyle(compact: true))
+
+                Button { Haptics.impact(.light); onOpenAddSource(.link) } label: {
+                    Label("Custom Stream", systemImage: "plus.circle").frame(maxWidth: .infinity)
                 }.buttonStyle(CVGlassButtonStyle(compact: true))
             }
 
             if !viewModel.officialSources.isEmpty {
                 Divider().padding(.vertical, 2)
-                Text("Available on Official Platforms").font(CVFont.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Text("Official Streaming Platforms").font(CVFont.caption.weight(.semibold)).foregroundStyle(.secondary)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: CVSpacing.xs) {
                         ForEach(viewModel.officialSources) { official in
                             if let url = official.officialServiceURL {
                                 Button { Haptics.selection(); onOpenOfficialURL(url) } label: {
-                                    Label("Open in \(official.providerName)", systemImage: "arrow.up.right.square")
+                                    Label("Open in \(official.providerName)", systemImage: "play.tv")
                                 }.buttonStyle(CVGlassButtonStyle(compact: true))
                             }
                         }
@@ -368,10 +382,19 @@ public struct PlaybackSetupPanel: View {
         }
     }
 
+    private var instantFallbackURL: URL? {
+        if let trailer = item.trailerURL { return trailer }
+        if let official = viewModel.officialSources.first?.officialServiceURL { return official }
+        var comps = URLComponents(string: "https://m.youtube.com/results")
+        let epSuffix = viewModel.selectedEpisode.map { " S\($0.seasonNumber)E\($0.episodeNumber)" } ?? " Official Trailer"
+        comps?.queryItems = [URLQueryItem(name: "search_query", value: "\(item.localizedTitle)\(epSuffix)")]
+        return comps?.url
+    }
+
     private var fallbackDescription: String {
         if let ep = viewModel.selectedEpisode {
-            return "No playable stream or local file is attached for \(ep.formattedCode). Add a valid HTTPS stream URL or import an on-device video file."
+            return "Open instant in-app video playback for \(ep.formattedCode), or attach a local file / custom stream."
         }
-        return "No playable stream or local file is attached for this title. Add a valid HTTPS stream URL or import an on-device video file."
+        return "Open instant in-app video playback right away, or optionally attach a local file / custom stream."
     }
 }

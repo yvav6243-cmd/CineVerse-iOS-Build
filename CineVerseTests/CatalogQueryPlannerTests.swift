@@ -54,6 +54,39 @@ struct CatalogQueryPlannerTests {
         }
     }
 
+    @Test func plansKeyFreeITunesCatalogForMoviesAndCartoonsWithoutTMDB() {
+        var movieCriteria = CatalogFilterCriteria()
+        movieCriteria.selectedCategory = .movie
+        let movieReqs = CatalogQueryPlanner.planRequests(
+            criteria: movieCriteria,
+            page: 2,
+            language: "en-US",
+            hasTMDBCredential: false
+        )
+        #expect(movieReqs.count == 1)
+        if case .iTunesCategory(let cat, let page) = movieReqs.first {
+            #expect(cat == .movie)
+            #expect(page == 2)
+        } else {
+            Issue.record("Expected iTunes movie catalog request when TMDB key is absent")
+        }
+
+        var cartoonCriteria = CatalogFilterCriteria()
+        cartoonCriteria.selectedCategory = .cartoonMovie
+        let cartoonReqs = CatalogQueryPlanner.planRequests(
+            criteria: cartoonCriteria,
+            page: 1,
+            language: "en-US",
+            hasTMDBCredential: false
+        )
+        #expect(cartoonReqs.count == 1)
+        if case .iTunesCategory(let cat, _) = cartoonReqs.first {
+            #expect(cat == .cartoonMovie)
+        } else {
+            Issue.record("Expected iTunes cartoonMovie request when TMDB key is absent")
+        }
+    }
+
     @Test func postFilterHandlesOriginalTitleOnlyAndMinSeasons() {
         let items = [
             MediaItem(

@@ -11,6 +11,7 @@ public final class DetailsRepository: DetailsRepositoryProtocol, @unchecked Send
     private let aniList: AniListServiceProtocol
     private let tvMaze: TVMazeServiceProtocol
     private let jikan: JikanServiceProtocol
+    private let iTunes: ITunesCatalogServiceProtocol
     private let cache: ResponseDiskCache
 
     private let cacheTTL: TimeInterval = 4 * 3600
@@ -20,12 +21,14 @@ public final class DetailsRepository: DetailsRepositoryProtocol, @unchecked Send
         aniList: AniListServiceProtocol,
         tvMaze: TVMazeServiceProtocol,
         jikan: JikanServiceProtocol,
+        iTunes: ITunesCatalogServiceProtocol = ITunesCatalogService(httpClient: URLSessionHTTPClient()),
         cache: ResponseDiskCache
     ) {
         self.tmdb = tmdb
         self.aniList = aniList
         self.tvMaze = tvMaze
         self.jikan = jikan
+        self.iTunes = iTunes
         self.cache = cache
     }
 
@@ -86,8 +89,13 @@ public final class DetailsRepository: DetailsRepositoryProtocol, @unchecked Send
             case (.tvMaze, _):
                 item = try await tvMaze.showDetails(id: reference.providerID)
             case (.openCinema, _):
-                if let offlineSnapshot { return offlineSnapshot }
-                throw NetworkError.invalidURL
+                if let resolved = try await iTunes.lookupDetails(providerID: reference.providerID) {
+                    item = resolved
+                } else if let offlineSnapshot {
+                    return offlineSnapshot
+                } else {
+                    throw NetworkError.invalidURL
+                }
             }
 
             await cache.store(item, forKey: cacheKey)

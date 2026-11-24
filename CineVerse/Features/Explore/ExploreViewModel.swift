@@ -70,7 +70,6 @@ public final class ExploreViewModel {
         }
 
         let language = settingsStore.contentLanguageCode
-        let hasTMDB = SecretsProvider.tmdbCredential() != nil
 
         var collected: [MediaItem] = []
         await withTaskGroup(of: [MediaItem].self) { group in
@@ -80,10 +79,8 @@ public final class ExploreViewModel {
             group.addTask { [catalogRepository] in
                 (try? await catalogRepository.homeFeed(.popularTVShows, language: language)) ?? []
             }
-            if hasTMDB {
-                group.addTask { [catalogRepository] in
-                    (try? await catalogRepository.homeFeed(.trendingMovies, language: language)) ?? []
-                }
+            group.addTask { [catalogRepository] in
+                (try? await catalogRepository.homeFeed(.trendingMovies, language: language)) ?? []
             }
 
             for await batch in group {

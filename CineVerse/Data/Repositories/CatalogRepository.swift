@@ -23,6 +23,7 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
     private let tmdb: TMDBServiceProtocol
     private let aniList: AniListServiceProtocol
     private let tvMaze: TVMazeServiceProtocol
+    private let iTunes: ITunesCatalogServiceProtocol
     private let cache: ResponseDiskCache
 
     private let cacheTTL: TimeInterval = 6 * 3600
@@ -31,29 +32,35 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
         tmdb: TMDBServiceProtocol,
         aniList: AniListServiceProtocol,
         tvMaze: TVMazeServiceProtocol,
+        iTunes: ITunesCatalogServiceProtocol = ITunesCatalogService(httpClient: URLSessionHTTPClient()),
         cache: ResponseDiskCache
     ) {
         self.tmdb = tmdb
         self.aniList = aniList
         self.tvMaze = tvMaze
+        self.iTunes = iTunes
         self.cache = cache
     }
 
     public func homeFeed(_ section: HomeSectionType, language: String) async throws -> [MediaItem] {
-        let cacheKey = "home:\(section.rawValue):\(language)"
+        let hasTMDB = SecretsProvider.tmdbCredential() != nil
+        let cacheKey = "home:\(section.rawValue):\(language):tmdb=\(hasTMDB)"
         if let cached = await cache.load(key: cacheKey, maxAge: cacheTTL, as: [MediaItem].self) {
             return cached
         }
 
-        let hasTMDB = SecretsProvider.tmdbCredential() != nil
         do {
             let items: [MediaItem]
             switch section {
             case .recentlyAdded:
                 items = try await fetchRecentlyAdded(language: language, hasTMDB: hasTMDB)
             case .trendingMovies:
-                guard hasTMDB else { throw NetworkError.missingAPIKey(.tmdb) }
-                items = try await tmdb.trendingMovies(page: 1, language: language)
+                if hasTMDB {
+                    items = try await tmdb.trendingMovies(page: 1, language: language)
+                } else {
+                    let charts = try await iTunes.topMovies(genreID: nil, limit: 50)
+                    items = MediaMerger.merge(iTunes.openCinemaShowcase() + charts)
+                }
             case .popularAnime:
                 var params = AniListSearchParameters()
                 params.sort = ["TRENDING_DESC"]
@@ -63,7 +70,9 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
                 if hasTMDB {
                     items = try await tmdb.popularTV(page: 1, language: language)
                 } else {
-                    items = Array(try await tvMaze.showIndex(page: 1).prefix(25))
+                    let p1 = try await tvMaze.showIndex(page: 1)
+                    let p2 = (try? await tvMaze.showIndex(page: 2)) ?? []
+                    items = Array(MediaMerger.merge(p1 + p2).prefix(45))
                 }
             case .upcomingReleases:
                 items = try await fetchUpcoming(language: language, hasTMDB: hasTMDB)
@@ -94,17 +103,17 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
             hasTMDBCredential: hasTMDB
         )
 
-        if requests.isEmpty && !hasTMDB {
-            throw NetworkError.missingAPIKey(.tmdb)
+        if requests.isEmpty {
+            return CatalogPage(items: [], hasMore: false)
         }
 
         var collected: [MediaItem] = []
         var anyHasMore = false
-        var excludeJapanese = false
+        var excludeJapanese = criteria.selectedCategory == .cartoonSeries || criteria.selectedCategory == .cartoonMovie
 
         try await withThrowingTaskGroup(of: (items: [MediaItem], hasMore: Bool, excludeJa: Bool).self) { group in
             for request in requests {
-                group.addTask { [tmdb, aniList, tvMaze] in
+                group.addTask { [tmdb, aniList, tvMaze, iTunes] in
                     switch request {
                     case .tmdbMovies(let params, let exJa):
                         let res = try await tmdb.discoverMovies(params)
@@ -117,7 +126,11 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
                         return (res.items, res.hasMore, false)
                     case .tvMazeIndex(let pg):
                         let res = try await tvMaze.showIndex(page: pg)
-                        return (Array(res.prefix(30)), !res.isEmpty, false)
+                        return (res, !res.isEmpty, false)
+                    case .iTunesCategory(let cat, let pg):
+                        let res = try await iTunes.moviesByCategory(cat, page: pg)
+                        let moreAvailable = cat == .movie ? (pg < 8 && !res.isEmpty) : false
+                        return (res, moreAvailable, cat == .cartoonMovie)
                     }
                 }
             }
@@ -163,6 +176,10 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
                 return (try? await aniList.fetchMediaPage(params)) ?? ([], false)
             }
             if page == 1 {
+                group.addTask { [iTunes] in
+                    let movies = (try? await iTunes.searchMovies(query: trimmed, limit: 35)) ?? []
+                    return (movies, false)
+                }
                 group.addTask { [tvMaze] in
                     let shows = (try? await tvMaze.searchShows(query: trimmed)) ?? []
                     return (shows, false)
@@ -197,12 +214,14 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
             return (try? await aniList.fetchMediaPage(params).items) ?? []
         }()
 
+        async let iTunesTask: [MediaItem] = (try? await iTunes.searchMovies(query: trimmed, limit: 6)) ?? []
+
         async let tmdbTask: [MediaItem] = {
             guard SecretsProvider.tmdbCredential() != nil else { return [] }
             return (try? await tmdb.searchMulti(query: trimmed, page: 1, language: language).items) ?? []
         }()
 
-        let combined = await tmdbTask + aniTask
+        let combined = await tmdbTask + iTunesTask + aniTask
         var seen: Set<String> = []
         var titles: [String] = []
         for item in combined {
@@ -264,14 +283,14 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
             return (try? await aniList.fetchMediaPage(p).items) ?? []
         }()
 
-        async let tmdbMovies: [MediaItem] = hasTMDB
+        async let movieTask: [MediaItem] = hasTMDB
             ? ((try? await tmdb.nowPlayingMovies(page: 1, language: language)) ?? [])
-            : []
-        async let tmdbTV: [MediaItem] = hasTMDB
+            : ((try? await iTunes.topMovies(genreID: nil, limit: 20)) ?? [])
+        async let tvTask: [MediaItem] = hasTMDB
             ? ((try? await tmdb.onTheAirTV(page: 1, language: language)) ?? [])
-            : []
+            : ((try? await tvMaze.showIndex(page: 1)) ?? [])
 
-        let combined = await Array(tmdbMovies.prefix(10)) + Array(tmdbTV.prefix(10)) + aniTask
+        let combined = await Array(movieTask.prefix(14)) + Array(tvTask.prefix(12)) + aniTask
         return MediaMerger.merge(combined)
     }
 
@@ -280,14 +299,14 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
             var p = AniListSearchParameters()
             p.status = "NOT_YET_RELEASED"
             p.sort = ["POPULARITY_DESC"]
-            p.perPage = 14
+            p.perPage = 16
             return (try? await aniList.fetchMediaPage(p).items) ?? []
         }()
-        async let tmdbUpcoming: [MediaItem] = hasTMDB
+        async let movieUpcoming: [MediaItem] = hasTMDB
             ? ((try? await tmdb.upcomingMovies(page: 1, language: language)) ?? [])
-            : []
+            : (((try? await iTunes.topMovies(genreID: 4401, limit: 30)) ?? []).filter { $0.releaseYear >= 2025 })
 
-        return MediaMerger.merge(await tmdbUpcoming + aniTask)
+        return MediaMerger.merge(await movieUpcoming + aniTask)
     }
 
     private func fetchTopRated(language: String, hasTMDB: Bool) async throws -> [MediaItem] {
@@ -297,14 +316,14 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
             p.perPage = 14
             return (try? await aniList.fetchMediaPage(p).items) ?? []
         }()
-        async let tmdbMovies: [MediaItem] = hasTMDB
+        async let movieTop: [MediaItem] = hasTMDB
             ? ((try? await tmdb.topRatedMovies(page: 1, language: language)) ?? [])
-            : []
-        async let tmdbTV: [MediaItem] = hasTMDB
+            : (iTunes.openCinemaShowcase() + ((try? await iTunes.topMovies(genreID: 4406, limit: 25)) ?? []))
+        async let tvTop: [MediaItem] = hasTMDB
             ? ((try? await tmdb.topRatedTV(page: 1, language: language)) ?? [])
-            : []
+            : (((try? await tvMaze.showIndex(page: 1)) ?? []).filter { $0.displayRating >= 8.2 })
 
-        let merged = MediaMerger.merge(await tmdbMovies + tmdbTV + aniTask)
+        let merged = MediaMerger.merge(await movieTop + Array(tvTop.prefix(15)) + aniTask)
         return merged.sorted { $0.displayRating > $1.displayRating }
     }
 }

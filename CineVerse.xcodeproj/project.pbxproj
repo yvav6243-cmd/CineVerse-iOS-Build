@@ -28,6 +28,7 @@
 		281ED00AA5F4CC82D9FEF028 /* Chips.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8162EEAD0186A639DE71BBF3 /* Chips.swift */; };
 		BB8B78CD5E51E2C0C6F85E01 /* ExpandableText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99A40EE934C77464CD531100 /* ExpandableText.swift */; };
 		2B993B474F613C8183E5D321 /* GlassModifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4818D9AA9F60E1FED2E0FD0 /* GlassModifiers.swift */; };
+		808B466034683CF4C2C316DB /* InAppSafariView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1136FAB7F6740A86CB9644C1 /* InAppSafariView.swift */; };
 		E7850E02BF31A652EC30F7EA /* MediaRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53CFDC94D509BE88B0DC8580 /* MediaRail.swift */; };
 		43791DEE9D10B9C26F93382C /* PosterCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 159C3F0261A286437170F161 /* PosterCard.swift */; };
 		85A5821B3461531C0C855256 /* ProgressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = DADF9022A903AEF0BFA2F331 /* ProgressBar.swift */; };
@@ -69,6 +70,7 @@
 		7EA8C45140B73FF813F39148 /* LocalVideoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49860D5CF4FE89180D27E03A /* LocalVideoStore.swift */; };
 		22829837F0753C0A28569572 /* MediaSourceInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D91F987DBBD56D0D717BC365 /* MediaSourceInspector.swift */; };
 		21B60051D6DD05DB7D4E2514 /* OfficialServicesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A33C47BD9B970A730174DB5 /* OfficialServicesProvider.swift */; };
+		E9DBD2D52BAD1480C8C176B1 /* OpenStreamSourceProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5029D65B779B52BF04701EE /* OpenStreamSourceProvider.swift */; };
 		B064FABFDD4EEF96FA4253C2 /* VideoSourceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D71D85716567BF68BDAC4E36 /* VideoSourceManager.swift */; };
 		7D1E1ED2B7D94266EB5EEF89 /* VideoSourceProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9A4D5E0B85BC033CDF207DA /* VideoSourceProvider.swift */; };
 		D798147002342226225F7ABA /* CalendarRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C6A14F539388AE82C44732C /* CalendarRepository.swift */; };
@@ -91,6 +93,8 @@
 		CE9E8D5AA636A0CEC9B6AEF2 /* EpisodeAlertScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21D1BBB72FDF248B8292E151 /* EpisodeAlertScheduler.swift */; };
 		DA49352790142484C51FCB2A /* InternetArchiveDTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ADCEE5645511AB129626DC0 /* InternetArchiveDTOs.swift */; };
 		CF9CEED8A1D389690E0AC1C8 /* InternetArchiveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C369F72F8F2E4C7FDDFE74B8 /* InternetArchiveService.swift */; };
+		CF473E0B266CFBFA04D032A0 /* ITunesCatalogService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3180A9B992679E581513459B /* ITunesCatalogService.swift */; };
+		F261F1BB4A74D6017852018C /* ITunesDTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F3D84F0B905255AAD2F40C6 /* ITunesDTOs.swift */; };
 		13B5EBD395E5CADDC9A84F18 /* JikanService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 219FCAF635B852BC1D087B8C /* JikanService.swift */; };
 		CE599D5A4DDF4ABAC0CB85C0 /* NowPlayingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6342294DAB5A9D0DD99C9979 /* NowPlayingController.swift */; };
 		208CEA35662C7C6D975E1CEC /* PlaybackActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0CF65F60CC632D100CC53E /* PlaybackActivityController.swift */; };
@@ -216,6 +220,7 @@
 		8162EEAD0186A639DE71BBF3 /* Chips.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "Chips.swift"; path = "CineVerse/Core/DesignSystem/Chips.swift"; sourceTree = SOURCE_ROOT; };
 		99A40EE934C77464CD531100 /* ExpandableText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ExpandableText.swift"; path = "CineVerse/Core/DesignSystem/ExpandableText.swift"; sourceTree = SOURCE_ROOT; };
 		D4818D9AA9F60E1FED2E0FD0 /* GlassModifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "GlassModifiers.swift"; path = "CineVerse/Core/DesignSystem/GlassModifiers.swift"; sourceTree = SOURCE_ROOT; };
+		1136FAB7F6740A86CB9644C1 /* InAppSafariView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "InAppSafariView.swift"; path = "CineVerse/Core/DesignSystem/InAppSafariView.swift"; sourceTree = SOURCE_ROOT; };
 		53CFDC94D509BE88B0DC8580 /* MediaRail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MediaRail.swift"; path = "CineVerse/Core/DesignSystem/MediaRail.swift"; sourceTree = SOURCE_ROOT; };
 		159C3F0261A286437170F161 /* PosterCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "PosterCard.swift"; path = "CineVerse/Core/DesignSystem/PosterCard.swift"; sourceTree = SOURCE_ROOT; };
 		DADF9022A903AEF0BFA2F331 /* ProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ProgressBar.swift"; path = "CineVerse/Core/DesignSystem/ProgressBar.swift"; sourceTree = SOURCE_ROOT; };
@@ -257,6 +262,7 @@
 		49860D5CF4FE89180D27E03A /* LocalVideoStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "LocalVideoStore.swift"; path = "CineVerse/Data/Providers/LocalVideoStore.swift"; sourceTree = SOURCE_ROOT; };
 		D91F987DBBD56D0D717BC365 /* MediaSourceInspector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MediaSourceInspector.swift"; path = "CineVerse/Data/Providers/MediaSourceInspector.swift"; sourceTree = SOURCE_ROOT; };
 		2A33C47BD9B970A730174DB5 /* OfficialServicesProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "OfficialServicesProvider.swift"; path = "CineVerse/Data/Providers/OfficialServicesProvider.swift"; sourceTree = SOURCE_ROOT; };
+		A5029D65B779B52BF04701EE /* OpenStreamSourceProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "OpenStreamSourceProvider.swift"; path = "CineVerse/Data/Providers/OpenStreamSourceProvider.swift"; sourceTree = SOURCE_ROOT; };
 		D71D85716567BF68BDAC4E36 /* VideoSourceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "VideoSourceManager.swift"; path = "CineVerse/Data/Providers/VideoSourceManager.swift"; sourceTree = SOURCE_ROOT; };
 		C9A4D5E0B85BC033CDF207DA /* VideoSourceProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "VideoSourceProvider.swift"; path = "CineVerse/Data/Providers/VideoSourceProvider.swift"; sourceTree = SOURCE_ROOT; };
 		8C6A14F539388AE82C44732C /* CalendarRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CalendarRepository.swift"; path = "CineVerse/Data/Repositories/CalendarRepository.swift"; sourceTree = SOURCE_ROOT; };
@@ -279,6 +285,8 @@
 		21D1BBB72FDF248B8292E151 /* EpisodeAlertScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "EpisodeAlertScheduler.swift"; path = "CineVerse/Data/Services/EpisodeAlertScheduler.swift"; sourceTree = SOURCE_ROOT; };
 		2ADCEE5645511AB129626DC0 /* InternetArchiveDTOs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "InternetArchiveDTOs.swift"; path = "CineVerse/Data/Services/InternetArchive/InternetArchiveDTOs.swift"; sourceTree = SOURCE_ROOT; };
 		C369F72F8F2E4C7FDDFE74B8 /* InternetArchiveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "InternetArchiveService.swift"; path = "CineVerse/Data/Services/InternetArchive/InternetArchiveService.swift"; sourceTree = SOURCE_ROOT; };
+		3180A9B992679E581513459B /* ITunesCatalogService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ITunesCatalogService.swift"; path = "CineVerse/Data/Services/ITunes/ITunesCatalogService.swift"; sourceTree = SOURCE_ROOT; };
+		7F3D84F0B905255AAD2F40C6 /* ITunesDTOs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ITunesDTOs.swift"; path = "CineVerse/Data/Services/ITunes/ITunesDTOs.swift"; sourceTree = SOURCE_ROOT; };
 		219FCAF635B852BC1D087B8C /* JikanService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "JikanService.swift"; path = "CineVerse/Data/Services/Jikan/JikanService.swift"; sourceTree = SOURCE_ROOT; };
 		6342294DAB5A9D0DD99C9979 /* NowPlayingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "NowPlayingController.swift"; path = "CineVerse/Data/Services/NowPlayingController.swift"; sourceTree = SOURCE_ROOT; };
 		CC0CF65F60CC632D100CC53E /* PlaybackActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "PlaybackActivityController.swift"; path = "CineVerse/Data/Services/PlaybackActivityController.swift"; sourceTree = SOURCE_ROOT; };
@@ -437,6 +445,7 @@
 				8162EEAD0186A639DE71BBF3 /* Chips.swift */,
 				99A40EE934C77464CD531100 /* ExpandableText.swift */,
 				D4818D9AA9F60E1FED2E0FD0 /* GlassModifiers.swift */,
+				1136FAB7F6740A86CB9644C1 /* InAppSafariView.swift */,
 				53CFDC94D509BE88B0DC8580 /* MediaRail.swift */,
 				159C3F0261A286437170F161 /* PosterCard.swift */,
 				DADF9022A903AEF0BFA2F331 /* ProgressBar.swift */,
@@ -478,6 +487,7 @@
 				49860D5CF4FE89180D27E03A /* LocalVideoStore.swift */,
 				D91F987DBBD56D0D717BC365 /* MediaSourceInspector.swift */,
 				2A33C47BD9B970A730174DB5 /* OfficialServicesProvider.swift */,
+				A5029D65B779B52BF04701EE /* OpenStreamSourceProvider.swift */,
 				D71D85716567BF68BDAC4E36 /* VideoSourceManager.swift */,
 				C9A4D5E0B85BC033CDF207DA /* VideoSourceProvider.swift */,
 				8C6A14F539388AE82C44732C /* CalendarRepository.swift */,
@@ -500,6 +510,8 @@
 				21D1BBB72FDF248B8292E151 /* EpisodeAlertScheduler.swift */,
 				2ADCEE5645511AB129626DC0 /* InternetArchiveDTOs.swift */,
 				C369F72F8F2E4C7FDDFE74B8 /* InternetArchiveService.swift */,
+				3180A9B992679E581513459B /* ITunesCatalogService.swift */,
+				7F3D84F0B905255AAD2F40C6 /* ITunesDTOs.swift */,
 				219FCAF635B852BC1D087B8C /* JikanService.swift */,
 				6342294DAB5A9D0DD99C9979 /* NowPlayingController.swift */,
 				CC0CF65F60CC632D100CC53E /* PlaybackActivityController.swift */,
@@ -763,6 +775,7 @@
 				281ED00AA5F4CC82D9FEF028 /* Chips.swift in Sources */,
 				BB8B78CD5E51E2C0C6F85E01 /* ExpandableText.swift in Sources */,
 				2B993B474F613C8183E5D321 /* GlassModifiers.swift in Sources */,
+				808B466034683CF4C2C316DB /* InAppSafariView.swift in Sources */,
 				E7850E02BF31A652EC30F7EA /* MediaRail.swift in Sources */,
 				43791DEE9D10B9C26F93382C /* PosterCard.swift in Sources */,
 				85A5821B3461531C0C855256 /* ProgressBar.swift in Sources */,
@@ -804,6 +817,7 @@
 				7EA8C45140B73FF813F39148 /* LocalVideoStore.swift in Sources */,
 				22829837F0753C0A28569572 /* MediaSourceInspector.swift in Sources */,
 				21B60051D6DD05DB7D4E2514 /* OfficialServicesProvider.swift in Sources */,
+				E9DBD2D52BAD1480C8C176B1 /* OpenStreamSourceProvider.swift in Sources */,
 				B064FABFDD4EEF96FA4253C2 /* VideoSourceManager.swift in Sources */,
 				7D1E1ED2B7D94266EB5EEF89 /* VideoSourceProvider.swift in Sources */,
 				D798147002342226225F7ABA /* CalendarRepository.swift in Sources */,
@@ -826,6 +840,8 @@
 				CE9E8D5AA636A0CEC9B6AEF2 /* EpisodeAlertScheduler.swift in Sources */,
 				DA49352790142484C51FCB2A /* InternetArchiveDTOs.swift in Sources */,
 				CF9CEED8A1D389690E0AC1C8 /* InternetArchiveService.swift in Sources */,
+				CF473E0B266CFBFA04D032A0 /* ITunesCatalogService.swift in Sources */,
+				F261F1BB4A74D6017852018C /* ITunesDTOs.swift in Sources */,
 				13B5EBD395E5CADDC9A84F18 /* JikanService.swift in Sources */,
 				CE599D5A4DDF4ABAC0CB85C0 /* NowPlayingController.swift in Sources */,
 				208CEA35662C7C6D975E1CEC /* PlaybackActivityController.swift in Sources */,

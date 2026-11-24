@@ -148,6 +148,9 @@ public enum TVMazeMapper {
         if loweredType == "reality" || loweredType == "talk show" || loweredType == "variety" || loweredType == "news" {
             return .other
         }
+        if (language == "ko" || language == "zh" || language == "ja") && loweredGenres.contains("drama") {
+            return .drama
+        }
         return .tvSeries
     }
 
