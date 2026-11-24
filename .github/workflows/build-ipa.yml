@@ -1,0 +1,87 @@
+name: Build CineVerse iOS IPA (arm64)
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      tmdb_api_key:
+        description: 'Optional TMDB API Key (can also be entered in-app under Profile -> API Keys)'
+        required: false
+        default: ''
+      bundle_id:
+        description: 'Custom Bundle Identifier for Sideloadly / AltStore'
+        required: false
+        default: 'com.cineverse.app'
+
+jobs:
+  build-ipa:
+    name: Build & Verify Release arm64 IPA
+    runs-on: macos-15
+    steps:
+      - name: Checkout CineVerse repository
+        uses: actions/checkout@v4
+
+      - name: Select latest available Xcode
+        run: |
+          LATEST_XCODE=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n 1)
+          echo "Detected Xcode: $LATEST_XCODE"
+          sudo xcode-select -s "$LATEST_XCODE/Contents/Developer"
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: |
+          brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+
+      - name: Configure Base.xcconfig overrides
+        env:
+          INPUT_TMDB_KEY: ${{ github.event.inputs.tmdb_api_key || secrets.TMDB_API_KEY }}
+          INPUT_BUNDLE_ID: ${{ github.event.inputs.bundle_id || 'com.cineverse.app' }}
+        run: |
+          cat <<EOF > Config/Secrets.xcconfig
+          CV_BUNDLE_ID = ${INPUT_BUNDLE_ID}
+          CV_APP_GROUP = group.${INPUT_BUNDLE_ID}
+          TMDB_API_KEY = ${INPUT_TMDB_KEY}
+          EOF
+
+      - name: Normalize script line endings & build Release arm64 CineVerse.ipa
+        run: |
+          sed -i '' 's/\r$//' scripts/build_ipa.sh scripts/verify_ipa.sh
+          chmod +x scripts/build_ipa.sh scripts/verify_ipa.sh
+          ./scripts/build_ipa.sh --sideload
+
+      - name: Build & Run Unit Tests on iOS Simulator
+        run: |
+          SIM_ID=$(xcrun simctl list devices available | grep -E "iPhone 16|iPhone 15" | head -n 1 | sed -E 's/.*\(([0-9A-F-]+)\).*/\1/')
+          if [[ -n "$SIM_ID" ]]; then
+            echo "Running unit tests on simulator $SIM_ID..."
+            xcodebuild test \
+              -project CineVerse.xcodeproj \
+              -scheme CineVerse \
+              -destination "platform=iOS Simulator,id=$SIM_ID" \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY=""
+          fi
+
+      - name: Upload CineVerse.ipa Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CineVerse-iOS-arm64-IPA
+          path: |
+            CineVerse.ipa
+            Releases/CineVerse.ipa
+            Releases/README.md
+            Releases/REBUILD_AND_SIGN.md
+          retention-days: 90
+
+      - name: Publish GitHub Release (on tag push)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Releases/CineVerse.ipa
+            Releases/README.md
+            Releases/REBUILD_AND_SIGN.md

@@ -1,0 +1,85 @@
+{
+  "data": {
+    "Media": {
+      "id": 154587,
+      "idMal": 52991,
+      "title": {
+        "romaji": "Sousou no Frieren",
+        "english": "Frieren: Beyond Journey's End",
+        "native": "葬送のフリーレン"
+      },
+      "description": "After a ten-year quest alongside the hero Himmel, elven mage Frieren reflects on mortality.<br>She sets off on a new journey.",
+      "format": "TV",
+      "status": "FINISHED",
+      "episodes": 28,
+      "duration": 24,
+      "seasonYear": 2023,
+      "startDate": {
+        "year": 2023,
+        "month": 9,
+        "day": 29
+      },
+      "countryOfOrigin": "JP",
+      "genres": ["Adventure", "Drama", "Fantasy"],
+      "averageScore": 91,
+      "popularity": 320000,
+      "coverImage": {
+        "extraLarge": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx154587.jpg",
+        "color": "#a1c9f1"
+      },
+      "bannerImage": "https://s4.anilist.co/file/anilistcdn/media/anime/banner/154587.jpg",
+      "isAdult": false,
+      "trailer": {
+        "id": "ZEkwCGJ3o7M",
+        "site": "youtube",
+        "thumbnail": "https://i.ytimg.com/vi/ZEkwCGJ3o7M/hqdefault.jpg"
+      },
+      "studios": {
+        "nodes": [
+          { "name": "Madhouse" }
+        ]
+      },
+      "staff": {
+        "edges": [
+          {
+            "role": "Director",
+            "node": {
+              "id": 999,
+              "name": { "full": "Keiichirou Saitou" }
+            }
+          }
+        ]
+      },
+      "characters": {
+        "edges": [
+          {
+            "role": "MAIN",
+            "node": {
+              "name": { "full": "Frieren" },
+              "image": { "medium": "https://s4.anilist.co/file/anilistcdn/character/medium/b176754.jpg" }
+            },
+            "voiceActors": [
+              { "name": { "full": "Atsumi Tanezaki" } }
+            ]
+          }
+        ]
+      },
+      "streamingEpisodes": [
+        {
+          "title": "Episode 1 - The Journey's End",
+          "thumbnail": "https://img.example.com/ep1.jpg",
+          "url": "https://www.crunchyroll.com/watch/1",
+          "site": "Crunchyroll"
+        }
+      ],
+      "externalLinks": [
+        {
+          "site": "Crunchyroll",
+          "url": "https://www.crunchyroll.com/series/GG5H5XQX4",
+          "type": "STREAMING",
+          "language": "Japanese"
+        }
+      ]
+    }
+  }
+}

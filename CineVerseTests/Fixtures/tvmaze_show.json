@@ -1,0 +1,63 @@
+{
+  "id": 169,
+  "url": "https://www.tvmaze.com/shows/169/breaking-bad",
+  "name": "Breaking Bad",
+  "type": "Scripted",
+  "language": "English",
+  "genres": ["Drama", "Crime", "Thriller"],
+  "status": "Ended",
+  "runtime": 60,
+  "averageRuntime": 60,
+  "premiered": "2008-01-20",
+  "ended": "2013-09-29",
+  "officialSite": "https://www.sonypictures.com/tv/breakingbad",
+  "weight": 100,
+  "network": {
+    "id": 20,
+    "name": "AMC",
+    "country": { "name": "United States", "code": "US" }
+  },
+  "externals": {
+    "imdb": "tt0903747"
+  },
+  "image": {
+    "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/501/1253519.jpg",
+    "original": "https://static.tvmaze.com/uploads/images/original_untouched/501/1253519.jpg"
+  },
+  "summary": "<p><b>Breaking Bad</b> follows Walter White.</p>",
+  "_embedded": {
+    "cast": [
+      {
+        "person": {
+          "id": 14199,
+          "name": "Bryan Cranston",
+          "image": { "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/1/2821.jpg" }
+        },
+        "character": {
+          "id": 44295,
+          "name": "Walter White"
+        }
+      }
+    ],
+    "seasons": [
+      {
+        "id": 686,
+        "number": 1,
+        "name": "Season 1",
+        "episodeOrder": 7,
+        "premiereDate": "2008-01-20"
+      }
+    ],
+    "episodes": [
+      {
+        "id": 12192,
+        "name": "Pilot",
+        "season": 1,
+        "number": 1,
+        "airdate": "2008-01-20",
+        "runtime": 60,
+        "summary": "<p>Walter White begins cooking.</p>"
+      }
+    ]
+  }
+}

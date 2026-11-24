@@ -1,0 +1,15 @@
+WEBVTT
+
+NOTE This is a comment block
+
+STYLE
+::cue {
+  color: white;
+}
+
+intro
+00:02.500 --> 00:06.000 align:start position:10%
+<v Narrator>Welcome to <c.highlight>CineVerse</c>.
+
+01:02:00.000 --> 01:02:04.250
+Final cue line

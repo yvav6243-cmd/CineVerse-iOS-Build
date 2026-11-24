@@ -1,0 +1,152 @@
+import SwiftUI
+
+public struct PlayerSettingsSheet: View {
+    let session: PlayerSession
+    let settingsStore: SettingsStore
+    let onImportSubtitle: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    private let rates: [Float] = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
+
+    public init(
+        session: PlayerSession,
+        settingsStore: SettingsStore,
+        onImportSubtitle: @escaping () -> Void
+    ) {
+        self.session = session
+        self.settingsStore = settingsStore
+        self.onImportSubtitle = onImportSubtitle
+    }
+
+    public var body: some View {
+        NavigationStack {
+            List {
+                Section("Video Quality") {
+                    if session.engine.availableQualities.isEmpty {
+                        Text("Automatic stream quality")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(session.engine.availableQualities) { quality in
+                            Button {
+                                session.selectQuality(quality)
+                            } label: {
+                                HStack {
+                                    Text(quality.detailedLabel)
+                                        .foregroundStyle(.primary)
+                                    Spacer()
+                                    if session.engine.selectedQuality?.id == quality.id {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(CVColor.iris)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Section("Audio Track & Voiceover") {
+                    if session.engine.availableAudioTracks.isEmpty {
+                        Text("Default audio track")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(session.engine.availableAudioTracks) { track in
+                            Button {
+                                session.selectAudio(track)
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(track.displayName)
+                                            .foregroundStyle(.primary)
+                                        Text(track.isOriginal ? "Original • \(track.voiceoverStudio)" : track.voiceoverStudio)
+                                            .font(CVFont.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    if session.engine.selectedAudioTrack?.id == track.id {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(CVColor.iris)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Section("Subtitles") {
+                    Button {
+                        session.selectSubtitle(nil)
+                    } label: {
+                        HStack {
+                            Text("Off")
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            if session.engine.selectedSubtitleTrack == nil {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(CVColor.iris)
+                            }
+                        }
+                    }
+
+                    ForEach(session.engine.availableSubtitles) { sub in
+                        Button {
+                            session.selectSubtitle(sub)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(sub.displayName)
+                                        .foregroundStyle(.primary)
+                                    Text(sub.format.rawValue)
+                                        .font(CVFont.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if session.engine.selectedSubtitleTrack?.id == sub.id {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(CVColor.iris)
+                                }
+                            }
+                        }
+                    }
+
+                    Button {
+                        dismiss()
+                        onImportSubtitle()
+                    } label: {
+                        Label("Import External Subtitle (.srt / .vtt)", systemImage: "doc.badge.plus")
+                    }
+
+                    NavigationLink {
+                        SubtitleStyleSettingsView(settingsStore: settingsStore)
+                    } label: {
+                        Label("Subtitle Appearance", systemImage: "textformat.size")
+                    }
+                }
+
+                Section("Playback Speed") {
+                    ForEach(rates, id: \.self) { rate in
+                        Button {
+                            session.engine.setRate(rate)
+                        } label: {
+                            HStack {
+                                Text(rate == 1.0 ? "1.0x (Normal)" : String(format: "%.2gx", rate))
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                if session.engine.playbackRate == rate {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(CVColor.iris)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Playback Options")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}

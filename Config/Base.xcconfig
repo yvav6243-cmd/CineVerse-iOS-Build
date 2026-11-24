@@ -1,0 +1,6 @@
+CV_BUNDLE_ID = com.cineverse.app
+CV_APP_GROUP = group.com.cineverse.app
+TMDB_API_KEY =
+DEVELOPMENT_TEAM =
+
+#include? "Secrets.xcconfig"

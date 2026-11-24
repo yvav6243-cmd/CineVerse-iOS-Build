@@ -1,0 +1,251 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Home" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Home" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Басты бет" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Главная" } }
+      }
+    },
+    "Explore" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Explore" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Шолу" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Обзор" } }
+      }
+    },
+    "My List" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "My List" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Менің тізімім" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Моя коллекция" } }
+      }
+    },
+    "Tracker" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tracker" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Трекер" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Трекер" } }
+      }
+    },
+    "Profile" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Profile" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Профиль" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Профиль" } }
+      }
+    },
+    "Continue Watching" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Continue Watching" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Көруді жалғастыру" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Продолжить просмотр" } }
+      }
+    },
+    "Recently Added" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recently Added" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Жақында қосылған" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Недавно добавленные" } }
+      }
+    },
+    "Trending Movies" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Trending Movies" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Трендтегі фильмдер" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "В тренде: фильмы" } }
+      }
+    },
+    "Popular Anime" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Popular Anime" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Танымал аниме" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Популярное аниме" } }
+      }
+    },
+    "Popular TV Shows" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Popular TV Shows" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Танымал сериалдар" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Популярные сериалы" } }
+      }
+    },
+    "Upcoming Releases" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Upcoming Releases" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Жақында шығады" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Скоро выйдут" } }
+      }
+    },
+    "Recommended For You" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recommended For You" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Сізге ұсыныстар" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Рекомендации для вас" } }
+      }
+    },
+    "Top Rated" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Top Rated" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Үздік рейтинг" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Высокий рейтинг" } }
+      }
+    },
+    "Recently Watched" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recently Watched" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Жақында көрілген" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Недавно просмотрено" } }
+      }
+    },
+    "Your Favorites" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your Favorites" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Таңдаулылар" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Избранное" } }
+      }
+    },
+    "Watch" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Watch" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Көру" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Смотреть" } }
+      }
+    },
+    "Add to List" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add to List" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Тізімге қосу" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "В список" } }
+      }
+    },
+    "Mark as Watched" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Mark as Watched" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Көрілді деп белгілеу" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Просмотрено" } }
+      }
+    },
+    "Favorite" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Favorite" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Таңдаулы" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "В избранное" } }
+      }
+    },
+    "Share" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Share" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Бөлісу" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Поделиться" } }
+      }
+    },
+    "Planning" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Planning" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Жоспарда" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "В планах" } }
+      }
+    },
+    "Watching" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Watching" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Көріп жатырмын" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Смотрю" } }
+      }
+    },
+    "Completed" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Completed" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Аяқталды" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Завершено" } }
+      }
+    },
+    "On Hold" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "On Hold" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Кідіртілді" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Отложено" } }
+      }
+    },
+    "Dropped" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dropped" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Тоқтатылды" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Брошено" } }
+      }
+    },
+    "Rewatching" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rewatching" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Қайта көру" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Пересматриваю" } }
+      }
+    },
+    "Settings" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Баптаулар" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Настройки" } }
+      }
+    },
+    "Playback Setup" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Playback Setup" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Ойнату баптауы" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Параметры воспроизведения" } }
+      }
+    },
+    "Source" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Source" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Дереккөз" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Источник" } }
+      }
+    },
+    "Quality" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quality" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Сапа" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Качество" } }
+      }
+    },
+    "Voiceover" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Voiceover" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Дыбыстау" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Озвучка" } }
+      }
+    },
+    "Subtitles" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Subtitles" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Субтитрлер" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Субтитры" } }
+      }
+    },
+    "See All" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "See All" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Барлығы" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Все" } }
+      }
+    },
+    "Surprise Me" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Surprise Me" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Кездейсоқ таңдау" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Случайный выбор" } }
+      }
+    },
+    "Premiere Calendar" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Premiere Calendar" } },
+        "kk" : { "stringUnit" : { "state" : "translated", "value" : "Премьера күнтізбесі" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Календарь премьер" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}
