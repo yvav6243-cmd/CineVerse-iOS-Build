@@ -14,11 +14,15 @@ on:
         description: 'Custom Bundle Identifier for Sideloadly / AltStore'
         required: false
         default: 'com.cineverse.app'
+      runner:
+        description: 'GitHub macOS runner label'
+        required: false
+        default: 'macos-15-intel'
 
 jobs:
   build-ipa:
     name: Build & Verify Release arm64 IPA
-    runs-on: macos-15
+    runs-on: ${{ github.event.inputs.runner || 'macos-15-intel' }}
     steps:
       - name: Checkout CineVerse repository
         uses: actions/checkout@v4
