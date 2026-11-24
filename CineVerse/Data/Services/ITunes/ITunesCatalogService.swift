@@ -33,6 +33,14 @@ public final class ITunesCatalogService: ITunesCatalogServiceProtocol, @unchecke
     }
 
     public func topMovies(genreID: Int? = nil, limit: Int = 60) async throws -> [MediaItem] {
+        try await fetchChartMovies(genreID: genreID, limit: limit, forcedProjectType: nil)
+    }
+
+    private func fetchChartMovies(
+        genreID: Int?,
+        limit: Int,
+        forcedProjectType: MediaProjectType?
+    ) async throws -> [MediaItem] {
         let clampedLimit = min(max(limit, 10), 100)
         let path: String
         if let genreID {
@@ -45,7 +53,12 @@ public final class ITunesCatalogService: ITunesCatalogServiceProtocol, @unchecke
         let root = try await httpClient.send(endpoint, as: ITunesRSSRootDTO.self)
         let entries = root.feed?.entry ?? []
         return entries.enumerated().compactMap { index, entry in
-            mapRSSEntry(entry, rankIndex: index, forcedGenreID: genreID)
+            mapRSSEntry(
+                entry,
+                rankIndex: index,
+                forcedGenreID: genreID,
+                forcedProjectType: forcedProjectType
+            )
         }
     }
 
@@ -54,26 +67,18 @@ public final class ITunesCatalogService: ITunesCatalogServiceProtocol, @unchecke
         case .cartoonMovie:
             guard page == 1 else { return [] }
             let openAnimated = openCinemaShowcase().filter { $0.projectType == .cartoonMovie }
-            let charts = try await topMovies(genreID: 4410, limit: 80)
+            let charts = try await fetchChartMovies(genreID: 4410, limit: 80, forcedProjectType: .cartoonMovie)
             return openAnimated + charts
         case .documentary:
             guard page == 1 else { return [] }
             let openDocs = openCinemaShowcase().filter { $0.projectType == .documentary }
-            let charts = try await topMovies(genreID: 4405, limit: 80)
+            let charts = try await fetchChartMovies(genreID: 4405, limit: 80, forcedProjectType: .documentary)
             return openDocs + charts
         case .animeMovie:
-            return page == 1 ? try await topMovies(genreID: 4431, limit: 60) : []
+            return page == 1 ? try await fetchChartMovies(genreID: 4431, limit: 60, forcedProjectType: .animeMovie) : []
         case .drama:
             guard page == 1 else { return [] }
-            let charts = try await topMovies(genreID: 4406, limit: 80)
-            return charts.map { item in
-                var copy = item
-                copy.projectType = .drama
-                if !copy.genres.contains(where: { $0.localizedCaseInsensitiveContains("drama") }) {
-                    copy.genres.append("Drama")
-                }
-                return copy
-            }
+            return try await fetchChartMovies(genreID: 4406, limit: 80, forcedProjectType: .drama)
         case .special:
             return page == 1 ? openCinemaShowcase() : []
         case .movie:
@@ -280,7 +285,12 @@ public final class ITunesCatalogService: ITunesCatalogServiceProtocol, @unchecke
 
     // MARK: - Private Mapping Helpers
 
-    private func mapRSSEntry(_ entry: ITunesRSSEntryDTO, rankIndex: Int, forcedGenreID: Int?) -> MediaItem? {
+    private func mapRSSEntry(
+        _ entry: ITunesRSSEntryDTO,
+        rankIndex: Int,
+        forcedGenreID: Int?,
+        forcedProjectType: MediaProjectType?
+    ) -> MediaItem? {
         guard let rawID = entry.id?.attributes?.imId?.nilIfEmpty,
               let title = entry.name?.label?.nilIfEmpty else {
             return nil
@@ -292,7 +302,11 @@ public final class ITunesCatalogService: ITunesCatalogServiceProtocol, @unchecke
 
         let categoryLabel = entry.category?.attributes?.label ?? entry.category?.attributes?.term ?? "Drama"
         let categoryID = forcedGenreID ?? entry.category?.attributes?.imId.flatMap(Int.init)
-        let projectType = classifyGenre(id: categoryID, label: categoryLabel)
+        let projectType = forcedProjectType ?? classifyGenre(id: categoryID, label: categoryLabel)
+        var genresList = [categoryLabel]
+        if forcedGenreID == 4406 && !genresList.contains(where: { $0.localizedCaseInsensitiveContains("drama") }) {
+            genresList.append("Drama")
+        }
 
         let releaseRaw = entry.releaseDate?.label
         let releaseDate = releaseRaw.flatMap { ISO8601DateFormatter().date(from: $0) }
@@ -335,7 +349,7 @@ public final class ITunesCatalogService: ITunesCatalogServiceProtocol, @unchecke
             countryOfOrigin: "US",
             originalLanguage: "en",
             ageRating: projectType == .cartoonMovie ? "6+" : "13+",
-            genres: [categoryLabel],
+            genres: genresList,
             durationMinutes: 115,
             totalSeasons: 1,
             totalEpisodes: 1,
