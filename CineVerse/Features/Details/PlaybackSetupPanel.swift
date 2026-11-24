@@ -15,6 +15,7 @@ public struct PlaybackSetupPanel: View {
     let onOpenAddSource: (AddSourceTab) -> Void
     let onImportSubtitle: () -> Void
     let onOpenOfficialURL: (URL) -> Void
+    let onPlayTrailer: () -> Void
 
     public init(
         item: MediaItem,
@@ -24,7 +25,8 @@ public struct PlaybackSetupPanel: View {
         onStartWatching: @escaping (PreWatchPlaybackSelection) -> Void,
         onOpenAddSource: @escaping (AddSourceTab) -> Void,
         onImportSubtitle: @escaping () -> Void,
-        onOpenOfficialURL: @escaping (URL) -> Void
+        onOpenOfficialURL: @escaping (URL) -> Void,
+        onPlayTrailer: @escaping () -> Void
     ) {
         self.item = item
         self.viewModel = viewModel
@@ -34,6 +36,7 @@ public struct PlaybackSetupPanel: View {
         self.onOpenAddSource = onOpenAddSource
         self.onImportSubtitle = onImportSubtitle
         self.onOpenOfficialURL = onOpenOfficialURL
+        self.onPlayTrailer = onPlayTrailer
     }
 
     public var body: some View {
@@ -335,21 +338,18 @@ public struct PlaybackSetupPanel: View {
                     .frame(width: 38, height: 38)
                     .background(CVColor.iris.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Instant Web & Custom Playback").font(CVFont.cardTitle)
+                    Text("No Open Stream for This Title").font(CVFont.cardTitle)
                     Text(fallbackDescription).font(CVFont.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             }
 
-            if let instantURL = instantFallbackURL {
+            if item.trailerURL != nil {
                 Button {
                     Haptics.impact(.medium)
-                    onOpenOfficialURL(instantURL)
+                    onPlayTrailer()
                 } label: {
-                    Label(
-                        item.trailerURL != nil ? "Watch Official Video Player" : "Open Instant Video Preview",
-                        systemImage: "play.fill"
-                    )
-                    .frame(maxWidth: .infinity)
+                    Label("Play Trailer in CineVerse Player", systemImage: "play.fill")
+                        .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(CVPrimaryButtonStyle())
             }
@@ -382,19 +382,7 @@ public struct PlaybackSetupPanel: View {
         }
     }
 
-    private var instantFallbackURL: URL? {
-        if let trailer = item.trailerURL { return trailer }
-        if let official = viewModel.officialSources.first?.officialServiceURL { return official }
-        var comps = URLComponents(string: "https://m.youtube.com/results")
-        let epSuffix = viewModel.selectedEpisode.map { " S\($0.seasonNumber)E\($0.episodeNumber)" } ?? " Official Trailer"
-        comps?.queryItems = [URLQueryItem(name: "search_query", value: "\(item.localizedTitle)\(epSuffix)")]
-        return comps?.url
-    }
-
     private var fallbackDescription: String {
-        if let ep = viewModel.selectedEpisode {
-            return "Open instant in-app video playback for \(ep.formattedCode), or attach a local file / custom stream."
-        }
-        return "Open instant in-app video playback right away, or optionally attach a local file / custom stream."
+        "Full episodes and films are only available from licensed services. Play the official trailer in the CineVerse player, or attach your own stream or file."
     }
 }

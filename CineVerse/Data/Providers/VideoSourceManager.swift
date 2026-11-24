@@ -46,22 +46,43 @@ public final class VideoSourceManager {
     }
 
     public func resolveSources(for item: MediaItem, episode: MediaEpisode?) async -> [VideoSourceDescriptor] {
-        var collected: [VideoSourceDescriptor] = []
+        var batches: [(providerIndex: Int, items: [VideoSourceDescriptor])] = []
 
-        await withTaskGroup(of: [VideoSourceDescriptor].self) { group in
-            for provider in providers {
+        await withTaskGroup(of: (Int, [VideoSourceDescriptor]).self) { group in
+            for (index, provider) in providers.enumerated() {
                 group.addTask {
-                    await provider.sources(for: item, episode: episode)
+                    let result = await provider.sources(for: item, episode: episode)
+                    return (index, result)
                 }
             }
             for await batch in group {
-                collected.append(contentsOf: batch)
+                batches.append(batch)
             }
         }
 
-        return collected.sorted { lhs, rhs in
-            Self.priority(for: lhs.format) < Self.priority(for: rhs.format)
+        let orderedEntries = batches
+            .sorted { $0.providerIndex < $1.providerIndex }
+            .flatMap { batch in
+                batch.items.enumerated().map { offset, descriptor in
+                    (
+                        formatPriority: Self.priority(for: descriptor.format),
+                        providerRank: Self.providerRank(for: descriptor.providerID, fallback: batch.providerIndex),
+                        originalIndex: offset,
+                        descriptor: descriptor
+                    )
+                }
+            }
+
+        return orderedEntries.sorted { lhs, rhs in
+            if lhs.formatPriority != rhs.formatPriority {
+                return lhs.formatPriority < rhs.formatPriority
+            }
+            if lhs.providerRank != rhs.providerRank {
+                return lhs.providerRank < rhs.providerRank
+            }
+            return lhs.originalIndex < rhs.originalIndex
         }
+        .map(\.descriptor)
     }
 
     public func inspect(_ descriptor: VideoSourceDescriptor, originalLanguage: String) async -> VideoSourceDescriptor {
@@ -180,6 +201,17 @@ public final class VideoSourceManager {
         case .localFile: return 0
         case .hls, .mp4: return 1
         case .externalOfficialService: return 2
+        }
+    }
+
+    private static func providerRank(for providerID: String, fallback: Int) -> Int {
+        switch providerID {
+        case "local_file": return 0
+        case "direct_link": return 1
+        case "open_stream": return 2
+        case "internet_archive": return 3
+        case "official_services": return 4
+        default: return 10 + fallback
         }
     }
 }

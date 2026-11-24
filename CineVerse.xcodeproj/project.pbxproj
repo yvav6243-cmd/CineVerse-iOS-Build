@@ -95,6 +95,7 @@
 		CF9CEED8A1D389690E0AC1C8 /* InternetArchiveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C369F72F8F2E4C7FDDFE74B8 /* InternetArchiveService.swift */; };
 		CF473E0B266CFBFA04D032A0 /* ITunesCatalogService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3180A9B992679E581513459B /* ITunesCatalogService.swift */; };
 		F261F1BB4A74D6017852018C /* ITunesDTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F3D84F0B905255AAD2F40C6 /* ITunesDTOs.swift */; };
+		A898C48D82C06B4BB6384B9B /* OpenCinemaLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7036E4036331976D053F17BD /* OpenCinemaLibrary.swift */; };
 		13B5EBD395E5CADDC9A84F18 /* JikanService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 219FCAF635B852BC1D087B8C /* JikanService.swift */; };
 		CE599D5A4DDF4ABAC0CB85C0 /* NowPlayingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6342294DAB5A9D0DD99C9979 /* NowPlayingController.swift */; };
 		208CEA35662C7C6D975E1CEC /* PlaybackActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0CF65F60CC632D100CC53E /* PlaybackActivityController.swift */; };
@@ -142,6 +143,7 @@
 		B12BBE71FF8870033EFEE27B /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9B0BF7EF75ED83A920EB1C2 /* LibraryView.swift */; };
 		25F15BA989DF6C29C66117C0 /* LibraryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CB578A67989242B2429A04C /* LibraryViewModel.swift */; };
 		BC91FDDE6903E8B1BC1DA95E /* AirPlayButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B4294DE08151E97BC6D8D5C /* AirPlayButton.swift */; };
+		9DB49B1BF2C1FDF2EBEAA303 /* EmbeddedTrailerPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 840D579A500F5E5993C53C46 /* EmbeddedTrailerPlayerView.swift */; };
 		373921E8DF1E876F0137885A /* PictureInPictureController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63B27A0344E9F50D694EDAD /* PictureInPictureController.swift */; };
 		D7D7C1BE6AFD04D98E50BCF8 /* PlaybackScrubber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 129C2DE32B872FB34CBC4907 /* PlaybackScrubber.swift */; };
 		694664B8E99CE402E2F953CE /* PlayerControlsOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 456A3D5A08E83D93C0651070 /* PlayerControlsOverlay.swift */; };
@@ -186,6 +188,7 @@
 		9415479BC2D7C97E9F574EC8 /* CatalogQueryPlannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C16714F52C3C6D7FA692922 /* CatalogQueryPlannerTests.swift */; };
 		6BEA714500DB5B4025ED3460 /* HLSManifestParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06FAF241B52741073CC0FAB /* HLSManifestParserTests.swift */; };
 		597296C2E3BBDDE883DA917C /* MapperDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 205CD9999317DB39C839DA04 /* MapperDecodingTests.swift */; };
+		3A1AE4E0E7399C6C8F624B80 /* OpenCinemaLibraryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFFC451A235AA1C14AE6D6D6 /* OpenCinemaLibraryTests.swift */; };
 		AE91AF8CB64EF44A2A87F322 /* RecommendationEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C1955AFF42A0E4D62CE6A9 /* RecommendationEngineTests.swift */; };
 		DB4DDB5873D632B3B3CF3E13 /* SourceURLValidatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87E7E860F328F33DF267E20C /* SourceURLValidatorTests.swift */; };
 		93452C0E423D8147E0EA90CD /* SubtitleParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2AD17DB85262B12AAD871FE /* SubtitleParserTests.swift */; };
@@ -287,6 +290,7 @@
 		C369F72F8F2E4C7FDDFE74B8 /* InternetArchiveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "InternetArchiveService.swift"; path = "CineVerse/Data/Services/InternetArchive/InternetArchiveService.swift"; sourceTree = SOURCE_ROOT; };
 		3180A9B992679E581513459B /* ITunesCatalogService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ITunesCatalogService.swift"; path = "CineVerse/Data/Services/ITunes/ITunesCatalogService.swift"; sourceTree = SOURCE_ROOT; };
 		7F3D84F0B905255AAD2F40C6 /* ITunesDTOs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ITunesDTOs.swift"; path = "CineVerse/Data/Services/ITunes/ITunesDTOs.swift"; sourceTree = SOURCE_ROOT; };
+		7036E4036331976D053F17BD /* OpenCinemaLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "OpenCinemaLibrary.swift"; path = "CineVerse/Data/Services/ITunes/OpenCinemaLibrary.swift"; sourceTree = SOURCE_ROOT; };
 		219FCAF635B852BC1D087B8C /* JikanService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "JikanService.swift"; path = "CineVerse/Data/Services/Jikan/JikanService.swift"; sourceTree = SOURCE_ROOT; };
 		6342294DAB5A9D0DD99C9979 /* NowPlayingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "NowPlayingController.swift"; path = "CineVerse/Data/Services/NowPlayingController.swift"; sourceTree = SOURCE_ROOT; };
 		CC0CF65F60CC632D100CC53E /* PlaybackActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "PlaybackActivityController.swift"; path = "CineVerse/Data/Services/PlaybackActivityController.swift"; sourceTree = SOURCE_ROOT; };
@@ -334,6 +338,7 @@
 		E9B0BF7EF75ED83A920EB1C2 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "LibraryView.swift"; path = "CineVerse/Features/Library/LibraryView.swift"; sourceTree = SOURCE_ROOT; };
 		5CB578A67989242B2429A04C /* LibraryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "LibraryViewModel.swift"; path = "CineVerse/Features/Library/LibraryViewModel.swift"; sourceTree = SOURCE_ROOT; };
 		2B4294DE08151E97BC6D8D5C /* AirPlayButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AirPlayButton.swift"; path = "CineVerse/Features/Player/AirPlayButton.swift"; sourceTree = SOURCE_ROOT; };
+		840D579A500F5E5993C53C46 /* EmbeddedTrailerPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "EmbeddedTrailerPlayerView.swift"; path = "CineVerse/Features/Player/EmbeddedTrailerPlayerView.swift"; sourceTree = SOURCE_ROOT; };
 		B63B27A0344E9F50D694EDAD /* PictureInPictureController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "PictureInPictureController.swift"; path = "CineVerse/Features/Player/PictureInPictureController.swift"; sourceTree = SOURCE_ROOT; };
 		129C2DE32B872FB34CBC4907 /* PlaybackScrubber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "PlaybackScrubber.swift"; path = "CineVerse/Features/Player/PlaybackScrubber.swift"; sourceTree = SOURCE_ROOT; };
 		456A3D5A08E83D93C0651070 /* PlayerControlsOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "PlayerControlsOverlay.swift"; path = "CineVerse/Features/Player/PlayerControlsOverlay.swift"; sourceTree = SOURCE_ROOT; };
@@ -375,6 +380,7 @@
 		2C16714F52C3C6D7FA692922 /* CatalogQueryPlannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CatalogQueryPlannerTests.swift"; path = "CineVerseTests/CatalogQueryPlannerTests.swift"; sourceTree = SOURCE_ROOT; };
 		E06FAF241B52741073CC0FAB /* HLSManifestParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "HLSManifestParserTests.swift"; path = "CineVerseTests/HLSManifestParserTests.swift"; sourceTree = SOURCE_ROOT; };
 		205CD9999317DB39C839DA04 /* MapperDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MapperDecodingTests.swift"; path = "CineVerseTests/MapperDecodingTests.swift"; sourceTree = SOURCE_ROOT; };
+		EFFC451A235AA1C14AE6D6D6 /* OpenCinemaLibraryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "OpenCinemaLibraryTests.swift"; path = "CineVerseTests/OpenCinemaLibraryTests.swift"; sourceTree = SOURCE_ROOT; };
 		C8C1955AFF42A0E4D62CE6A9 /* RecommendationEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RecommendationEngineTests.swift"; path = "CineVerseTests/RecommendationEngineTests.swift"; sourceTree = SOURCE_ROOT; };
 		87E7E860F328F33DF267E20C /* SourceURLValidatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SourceURLValidatorTests.swift"; path = "CineVerseTests/SourceURLValidatorTests.swift"; sourceTree = SOURCE_ROOT; };
 		E2AD17DB85262B12AAD871FE /* SubtitleParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SubtitleParserTests.swift"; path = "CineVerseTests/SubtitleParserTests.swift"; sourceTree = SOURCE_ROOT; };
@@ -512,6 +518,7 @@
 				C369F72F8F2E4C7FDDFE74B8 /* InternetArchiveService.swift */,
 				3180A9B992679E581513459B /* ITunesCatalogService.swift */,
 				7F3D84F0B905255AAD2F40C6 /* ITunesDTOs.swift */,
+				7036E4036331976D053F17BD /* OpenCinemaLibrary.swift */,
 				219FCAF635B852BC1D087B8C /* JikanService.swift */,
 				6342294DAB5A9D0DD99C9979 /* NowPlayingController.swift */,
 				CC0CF65F60CC632D100CC53E /* PlaybackActivityController.swift */,
@@ -559,6 +566,7 @@
 				E9B0BF7EF75ED83A920EB1C2 /* LibraryView.swift */,
 				5CB578A67989242B2429A04C /* LibraryViewModel.swift */,
 				2B4294DE08151E97BC6D8D5C /* AirPlayButton.swift */,
+				840D579A500F5E5993C53C46 /* EmbeddedTrailerPlayerView.swift */,
 				B63B27A0344E9F50D694EDAD /* PictureInPictureController.swift */,
 				129C2DE32B872FB34CBC4907 /* PlaybackScrubber.swift */,
 				456A3D5A08E83D93C0651070 /* PlayerControlsOverlay.swift */,
@@ -600,6 +608,7 @@
 				2C16714F52C3C6D7FA692922 /* CatalogQueryPlannerTests.swift */,
 				E06FAF241B52741073CC0FAB /* HLSManifestParserTests.swift */,
 				205CD9999317DB39C839DA04 /* MapperDecodingTests.swift */,
+				EFFC451A235AA1C14AE6D6D6 /* OpenCinemaLibraryTests.swift */,
 				C8C1955AFF42A0E4D62CE6A9 /* RecommendationEngineTests.swift */,
 				87E7E860F328F33DF267E20C /* SourceURLValidatorTests.swift */,
 				E2AD17DB85262B12AAD871FE /* SubtitleParserTests.swift */,
@@ -842,6 +851,7 @@
 				CF9CEED8A1D389690E0AC1C8 /* InternetArchiveService.swift in Sources */,
 				CF473E0B266CFBFA04D032A0 /* ITunesCatalogService.swift in Sources */,
 				F261F1BB4A74D6017852018C /* ITunesDTOs.swift in Sources */,
+				A898C48D82C06B4BB6384B9B /* OpenCinemaLibrary.swift in Sources */,
 				13B5EBD395E5CADDC9A84F18 /* JikanService.swift in Sources */,
 				CE599D5A4DDF4ABAC0CB85C0 /* NowPlayingController.swift in Sources */,
 				208CEA35662C7C6D975E1CEC /* PlaybackActivityController.swift in Sources */,
@@ -889,6 +899,7 @@
 				B12BBE71FF8870033EFEE27B /* LibraryView.swift in Sources */,
 				25F15BA989DF6C29C66117C0 /* LibraryViewModel.swift in Sources */,
 				BC91FDDE6903E8B1BC1DA95E /* AirPlayButton.swift in Sources */,
+				9DB49B1BF2C1FDF2EBEAA303 /* EmbeddedTrailerPlayerView.swift in Sources */,
 				373921E8DF1E876F0137885A /* PictureInPictureController.swift in Sources */,
 				D7D7C1BE6AFD04D98E50BCF8 /* PlaybackScrubber.swift in Sources */,
 				694664B8E99CE402E2F953CE /* PlayerControlsOverlay.swift in Sources */,
@@ -944,6 +955,7 @@
 				9415479BC2D7C97E9F574EC8 /* CatalogQueryPlannerTests.swift in Sources */,
 				6BEA714500DB5B4025ED3460 /* HLSManifestParserTests.swift in Sources */,
 				597296C2E3BBDDE883DA917C /* MapperDecodingTests.swift in Sources */,
+				3A1AE4E0E7399C6C8F624B80 /* OpenCinemaLibraryTests.swift in Sources */,
 				AE91AF8CB64EF44A2A87F322 /* RecommendationEngineTests.swift in Sources */,
 				DB4DDB5873D632B3B3CF3E13 /* SourceURLValidatorTests.swift in Sources */,
 				93452C0E423D8147E0EA90CD /* SubtitleParserTests.swift in Sources */,

@@ -199,6 +199,42 @@ public final class PlaybackSetupViewModel {
         )
     }
 
+    public func buildDirectTrailerSelection(url: URL, for item: MediaItem) async -> PreWatchPlaybackSelection {
+        let lang = item.originalLanguage.nilIfEmpty ?? "en"
+        let defaultAudio = AudioTrackOption(
+            id: "trailer-audio-\(lang)",
+            languageCode: lang,
+            displayName: LanguageCatalog.displayName(forLanguageCode: lang),
+            voiceoverStudio: "Original Audio",
+            isOriginal: true,
+            isDefault: true
+        )
+        let isHLS = url.pathExtension.lowercased() == "m3u8" || url.absoluteString.lowercased().contains(".m3u8")
+        let descriptor = VideoSourceDescriptor(
+            id: "trailer:\(item.id)",
+            providerID: "trailer",
+            providerName: "Official Trailer",
+            sourceDescription: "Direct trailer stream",
+            isAvailable: true,
+            format: isHLS ? .hls : .mp4,
+            playbackURL: url,
+            availableAudioTracks: [defaultAudio]
+        )
+        let inspected = await sourceManager.inspect(descriptor, originalLanguage: item.originalLanguage)
+        let quality = inspected.availableQualities.first
+            ?? VideoQualityVariant(id: "auto", tier: .auto, variantStreamURL: url)
+        let audio = inspected.availableAudioTracks.first ?? defaultAudio
+        return PreWatchPlaybackSelection(
+            mediaItem: item,
+            episode: nil,
+            source: inspected,
+            selectedQuality: quality,
+            selectedAudioTrack: audio,
+            selectedSubtitleTrack: nil,
+            startPositionSeconds: 0
+        )
+    }
+
     private func selectSource(_ source: VideoSourceDescriptor, entry: LibraryEntryRecord?) async {
         isInspecting = true
         let originalLang = mediaItem?.originalLanguage ?? "en"

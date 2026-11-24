@@ -21,6 +21,52 @@ public struct PlayerSettingsSheet: View {
     public var body: some View {
         NavigationStack {
             List {
+                if !session.alternativeSources.isEmpty {
+                    Section {
+                        ForEach(session.alternativeSources) { src in
+                            Button {
+                                Haptics.selection()
+                                Task { await session.switchSource(to: src) }
+                            } label: {
+                                HStack(spacing: CVSpacing.sm) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(src.providerName)
+                                            .foregroundStyle(.primary)
+                                            .lineLimit(1)
+                                        if !src.sourceDescription.isEmpty {
+                                            Text(src.sourceDescription)
+                                                .font(CVFont.caption)
+                                                .foregroundStyle(.secondary)
+                                                .lineLimit(1)
+                                        }
+                                    }
+                                    Spacer()
+                                    Text(src.format.badgeText)
+                                        .font(CVFont.micro)
+                                        .foregroundStyle(CVColor.iris)
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 3)
+                                        .background(CVColor.iris.opacity(0.14), in: Capsule(style: .continuous))
+                                    if src.id == session.selection.source.id {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(CVColor.iris)
+                                    }
+                                }
+                            }
+                            .disabled(session.isSwitchingSource)
+                        }
+                    } header: {
+                        HStack {
+                            Text("Source")
+                            Spacer()
+                            if session.isSwitchingSource {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
+                        }
+                    }
+                }
+
                 Section("Video Quality") {
                     if session.engine.availableQualities.isEmpty {
                         Text("Automatic stream quality")

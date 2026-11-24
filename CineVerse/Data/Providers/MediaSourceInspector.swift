@@ -56,12 +56,35 @@ public actor MediaSourceInspector {
             baseURL: url,
             originalLanguage: originalLanguage
         )
-        result.availableQualities = parsed.qualities.isEmpty
-            ? [VideoQualityVariant(id: "hls-auto", tier: .auto)]
-            : parsed.qualities
 
-        if !parsed.audioTracks.isEmpty {
-            result.availableAudioTracks = parsed.audioTracks
+        var bestByTier: [VideoQualityTier: VideoQualityVariant] = [:]
+        for variant in parsed.qualities where variant.tier != .auto {
+            if let existing = bestByTier[variant.tier] {
+                if (variant.bandwidthBitsPerSecond ?? 0) > (existing.bandwidthBitsPerSecond ?? 0) {
+                    bestByTier[variant.tier] = variant
+                }
+            } else {
+                bestByTier[variant.tier] = variant
+            }
+        }
+
+        var cleanedQualities = bestByTier.values.sorted { lhs, rhs in
+            (lhs.height ?? 0) > (rhs.height ?? 0)
+        }
+        cleanedQualities.insert(VideoQualityVariant(id: "hls-auto", tier: .auto), at: 0)
+        result.availableQualities = cleanedQualities
+
+        var seenAudioKeys: Set<String> = []
+        var dedupedAudio: [AudioTrackOption] = []
+        for track in parsed.audioTracks {
+            let key = "\(track.languageCode.lowercased())|\(track.voiceoverStudio.lowercased())"
+            if seenAudioKeys.insert(key).inserted {
+                dedupedAudio.append(track)
+            }
+        }
+
+        if !dedupedAudio.isEmpty {
+            result.availableAudioTracks = dedupedAudio
         } else if result.availableAudioTracks.isEmpty {
             result.availableAudioTracks = [defaultAudioTrack(languageCode: originalLanguage, studio: "HLS Stream Audio")]
         }

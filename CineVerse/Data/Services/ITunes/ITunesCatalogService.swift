@@ -1,10 +1,28 @@
 import Foundation
 
+public struct ITunesPreviewMatch: Sendable, Hashable {
+    public let url: URL
+    public let label: String
+
+    public init(url: URL, label: String) {
+        self.url = url
+        self.label = label
+    }
+}
+
 public protocol ITunesCatalogServiceProtocol: Sendable {
     func topMovies(genreID: Int?, limit: Int) async throws -> [MediaItem]
     func moviesByCategory(_ category: MediaProjectType, page: Int) async throws -> [MediaItem]
     func searchMovies(query: String, limit: Int) async throws -> [MediaItem]
     func lookupDetails(providerID: String) async throws -> MediaItem?
+    func findPlayablePreviews(
+        title: String,
+        originalTitle: String,
+        isEpisodic: Bool,
+        seasonNumber: Int?,
+        episodeNumber: Int?,
+        limit: Int
+    ) async -> [ITunesPreviewMatch]
     func findPlayablePreviewURL(title: String, originalTitle: String, isEpisodic: Bool, episodeNumber: Int?) async -> URL?
     func openCinemaShowcase() -> [MediaItem]
     func streamURLForOpenCinema(providerID: String) -> (url: URL, format: VideoStreamFormat, label: String)?
@@ -53,7 +71,7 @@ public final class ITunesCatalogService: ITunesCatalogServiceProtocol, @unchecke
         let root = try await httpClient.send(endpoint, as: ITunesRSSRootDTO.self)
         let entries = root.feed?.entry ?? []
         return entries.enumerated().compactMap { index, entry in
-            mapRSSEntry(
+            ITunesMapper.mapRSSEntry(
                 entry,
                 rankIndex: index,
                 forcedGenreID: genreID,
@@ -113,7 +131,7 @@ public final class ITunesCatalogService: ITunesCatalogServiceProtocol, @unchecke
         let movieMatches = (res.results ?? [])
             .filter { $0.kind == "feature-movie" }
             .enumerated()
-            .compactMap { idx, dto in mapTrack(dto, rankIndex: idx) }
+            .compactMap { idx, dto in ITunesMapper.mapTrack(dto, rankIndex: idx) }
 
         let openMatches = openCinemaShowcase().filter {
             $0.localizedTitle.localizedCaseInsensitiveContains(trimmed)
@@ -140,7 +158,7 @@ public final class ITunesCatalogService: ITunesCatalogServiceProtocol, @unchecke
         guard let track = res.results?.first(where: { $0.trackId != nil }) else {
             return nil
         }
-        guard var mapped = mapTrack(track, rankIndex: 0) else {
+        guard var mapped = ITunesMapper.mapTrack(track, rankIndex: 0) else {
             return nil
         }
         let currentID = mapped.id
@@ -152,13 +170,27 @@ public final class ITunesCatalogService: ITunesCatalogServiceProtocol, @unchecke
         return mapped
     }
 
-    public func findPlayablePreviewURL(
+    public func findPlayablePreviews(
         title: String,
         originalTitle: String,
         isEpisodic: Bool,
-        episodeNumber: Int?
-    ) async -> URL? {
-        let candidates = [title, originalTitle].filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        seasonNumber: Int?,
+        episodeNumber: Int?,
+        limit: Int
+    ) async -> [ITunesPreviewMatch] {
+        guard limit > 0 else { return [] }
+        var seenTerms: Set<String> = []
+        var candidates: [String] = []
+        for raw in [title, originalTitle] {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, seenTerms.insert(trimmed.lowercased()).inserted else { continue }
+            candidates.append(trimmed)
+        }
+
+        let targetKind = isEpisodic ? "tv-episode" : "feature-movie"
+        var rankedMatches: [(score: Int, match: ITunesPreviewMatch)] = []
+        var seenURLs: Set<String> = []
+
         for term in candidates {
             let ep = Endpoint(
                 baseURL: baseURL,
@@ -166,7 +198,7 @@ public final class ITunesCatalogService: ITunesCatalogServiceProtocol, @unchecke
                 queryItems: [
                     URLQueryItem(name: "term", value: term),
                     URLQueryItem(name: "country", value: "US"),
-                    URLQueryItem(name: "limit", value: "12")
+                    URLQueryItem(name: "limit", value: "25")
                 ],
                 timeoutInterval: 8
             )
@@ -175,274 +207,96 @@ public final class ITunesCatalogService: ITunesCatalogServiceProtocol, @unchecke
                 continue
             }
 
-            let targetKind = isEpisodic ? "tv-episode" : "feature-movie"
             let normalizedTarget = term.normalizedForComparison
+            guard !normalizedTarget.isEmpty else { continue }
 
-            // Prefer exact kind & title match
-            if let exact = results.first(where: { dto in
-                guard dto.kind == targetKind,
-                      let p = dto.previewUrl, p.hasPrefix("https://") else { return false }
-                if isEpisodic, let epNum = episodeNumber, let trackNum = dto.trackNumber, trackNum == epNum {
-                    return true
+            for dto in results {
+                let kind = dto.kind ?? ""
+                guard kind == "feature-movie" || kind == "tv-episode",
+                      let previewStr = dto.previewUrl,
+                      previewStr.hasPrefix("https://"),
+                      let previewURL = URL(string: previewStr),
+                      previewURL.scheme?.lowercased() == "https" else {
+                    continue
                 }
-                let tName = (dto.trackName ?? dto.collectionName ?? "").normalizedForComparison
-                let cName = (dto.collectionName ?? "").normalizedForComparison
-                return tName.contains(normalizedTarget) || normalizedTarget.contains(tName)
-                    || (!cName.isEmpty && (cName.contains(normalizedTarget) || normalizedTarget.contains(cName)))
-            }), let urlStr = exact.previewUrl, let url = URL(string: urlStr) {
-                return url
-            }
 
-            // Fallback to any video track with matching title & valid https previewUrl
-            if let anyMatch = results.first(where: { dto in
-                guard (dto.kind == "feature-movie" || dto.kind == "tv-episode"),
-                      let p = dto.previewUrl, p.hasPrefix("https://") else { return false }
-                let combined = "\(dto.trackName ?? "") \(dto.collectionName ?? "")".normalizedForComparison
-                return combined.contains(normalizedTarget) || normalizedTarget.contains(combined)
-            }), let urlStr = anyMatch.previewUrl, let url = URL(string: urlStr) {
-                return url
+                let rawTrackName = dto.trackName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let rawCollectionName = dto.collectionName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let tNorm = rawTrackName.normalizedForComparison
+                let cNorm = rawCollectionName.normalizedForComparison
+
+                let matchesTrack = !tNorm.isEmpty && (tNorm.contains(normalizedTarget) || normalizedTarget.contains(tNorm))
+                let matchesCollection = !cNorm.isEmpty && (cNorm.contains(normalizedTarget) || normalizedTarget.contains(cNorm))
+                guard matchesTrack || matchesCollection else { continue }
+
+                var rankScore = 0
+                if kind == targetKind {
+                    rankScore += 100
+                }
+                if isEpisodic {
+                    if let epNum = episodeNumber, let trackNum = dto.trackNumber, trackNum == epNum {
+                        rankScore += 50
+                    }
+                    if let sNum = seasonNumber,
+                       rawCollectionName.localizedCaseInsensitiveContains("Season \(sNum)") {
+                        rankScore += 25
+                    }
+                }
+                if matchesTrack {
+                    rankScore += 10
+                }
+
+                let trackLabel = rawTrackName.isEmpty ? term : rawTrackName
+                let rawLabel: String
+                if kind == "feature-movie" {
+                    rawLabel = "Official Trailer · \(trackLabel)"
+                } else {
+                    rawLabel = "Episode Preview · \(rawCollectionName) · \(trackLabel)"
+                }
+                let finalLabel = String(rawLabel.prefix(70))
+
+                if seenURLs.insert(previewURL.absoluteString).inserted {
+                    rankedMatches.append((rankScore, ITunesPreviewMatch(url: previewURL, label: finalLabel)))
+                }
             }
         }
-        return nil
+
+        let sorted = rankedMatches.sorted { $0.score > $1.score }
+        return Array(sorted.prefix(limit).map(\.match))
+    }
+
+    public func findPlayablePreviewURL(
+        title: String,
+        originalTitle: String,
+        isEpisodic: Bool,
+        episodeNumber: Int?
+    ) async -> URL? {
+        await findPlayablePreviews(
+            title: title,
+            originalTitle: originalTitle,
+            isEpisodic: isEpisodic,
+            seasonNumber: nil,
+            episodeNumber: episodeNumber,
+            limit: 1
+        ).first?.url
     }
 
     public func openCinemaShowcase() -> [MediaItem] {
-        [
-            MediaItem(
-                id: "opencinema:movie:open-tears-of-steel",
-                externalIDs: [.openCinema: "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8"],
-                primarySource: .openCinema,
-                projectType: .movie,
-                localizedTitle: "Tears of Steel (Open Cinema HD)",
-                originalTitle: "Tears of Steel",
-                synopsis: "In a dystopian future Amsterdam, a group of warriors and scientists gather at the Oude Kerk to stage a desperate mission to save the world from destructive robots. Full open-movie stream with adaptive HLS qualities and multi-language subtitles.",
-                releaseYear: 2012,
-                countryOfOrigin: "NL",
-                originalLanguage: "en",
-                ageRating: "13+",
-                genres: ["Sci-Fi", "Action"],
-                durationMinutes: 12,
-                releaseStatus: .finished,
-                ratings: MultiSourceRatings(tmdbScore: 7.8),
-                popularityScore: 950,
-                posterURL: URL(string: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Tos-poster.png/600px-Tos-poster.png"),
-                backdropURL: URL(string: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Tos-poster.png/800px-Tos-poster.png"),
-                director: "Ian Hubert (Blender Institute)"
-            ),
-            MediaItem(
-                id: "opencinema:movie:open-big-buck-bunny",
-                externalIDs: [.openCinema: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"],
-                primarySource: .openCinema,
-                projectType: .cartoonMovie,
-                localizedTitle: "Big Buck Bunny (Full Animated Film)",
-                originalTitle: "Big Buck Bunny",
-                synopsis: "A gentle giant rabbit's peaceful morning in the sunlit forest is interrupted by three mischievous woodland bullies—until he devises an unforgettable comical payback. Full 1080p adaptive HLS open animated film.",
-                releaseYear: 2008,
-                countryOfOrigin: "NL",
-                originalLanguage: "en",
-                ageRating: "6+",
-                genres: ["Animation", "Comedy", "Family"],
-                durationMinutes: 10,
-                releaseStatus: .finished,
-                ratings: MultiSourceRatings(tmdbScore: 7.6),
-                popularityScore: 920,
-                posterURL: URL(string: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/600px-Big_buck_bunny_poster_big.jpg"),
-                backdropURL: URL(string: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/800px-Big_buck_bunny_poster_big.jpg"),
-                director: "Sacha Goedegebure (Blender Foundation)"
-            ),
-            MediaItem(
-                id: "opencinema:movie:open-apple-dolby-showcase",
-                externalIDs: [.openCinema: "https://devstreaming-cdn.apple.com/videos/streaming/examples/adv_dv_atmos/main.m3u8"],
-                primarySource: .openCinema,
-                projectType: .documentary,
-                localizedTitle: "Cinema Mastering Showcase (Multi-Audio HLS)",
-                originalTitle: "Apple Cinema Mastering Showcase",
-                synopsis: "High-dynamic-range adaptive HLS cinema stream featuring multiple audio tracks and embedded subtitles for instant testing of CineVerse's pre-watch voiceover, quality, and subtitle selector.",
-                releaseYear: 2024,
-                countryOfOrigin: "US",
-                originalLanguage: "en",
-                ageRating: "12+",
-                genres: ["Documentary", "Sci-Fi"],
-                durationMinutes: 5,
-                releaseStatus: .finished,
-                ratings: MultiSourceRatings(tmdbScore: 8.4),
-                popularityScore: 910,
-                posterURL: URL(string: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Everest_North_Face_toward_Base_Camp_Tibet_Luca_Galuzzi_2006.jpg/600px-Everest_North_Face_toward_Base_Camp_Tibet_Luca_Galuzzi_2006.jpg"),
-                backdropURL: URL(string: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Everest_North_Face_toward_Base_Camp_Tibet_Luca_Galuzzi_2006.jpg/1024px-Everest_North_Face_toward_Base_Camp_Tibet_Luca_Galuzzi_2006.jpg"),
-                director: "Cinema Engineering Team"
-            )
-        ]
+        OpenCinemaLibrary.items
     }
 
     public func streamURLForOpenCinema(providerID: String) -> (url: URL, format: VideoStreamFormat, label: String)? {
+        if let first = OpenCinemaLibrary.streams(forItemID: providerID).first {
+            let fmt: VideoStreamFormat = (first.url.pathExtension.lowercased() == "m3u8" || first.url.absoluteString.contains(".m3u8")) ? .hls : .mp4
+            return (first.url, fmt, "CineVerse Open Cinema · \(first.label)")
+        }
         let fullID = providerID.hasPrefix("opencinema:") ? providerID : "opencinema:movie:\(providerID)"
-        guard let match = openCinemaShowcase().first(where: { $0.id == fullID }),
+        guard let match = OpenCinemaLibrary.items.first(where: { $0.id == fullID }),
               let raw = match.externalIDs[.openCinema],
               let url = URL(string: raw) else {
             return nil
         }
         let fmt: VideoStreamFormat = url.pathExtension.lowercased() == "m3u8" || raw.contains(".m3u8") ? .hls : .mp4
         return (url, fmt, "CineVerse Open Cinema (Full HD Stream)")
-    }
-
-    // MARK: - Private Mapping Helpers
-
-    private func mapRSSEntry(
-        _ entry: ITunesRSSEntryDTO,
-        rankIndex: Int,
-        forcedGenreID: Int?,
-        forcedProjectType: MediaProjectType?
-    ) -> MediaItem? {
-        guard let rawID = entry.id?.attributes?.imId?.nilIfEmpty,
-              let title = entry.name?.label?.nilIfEmpty else {
-            return nil
-        }
-
-        let rawArtwork = entry.images?.last?.label
-        let posterURL = highResArtworkURL(from: rawArtwork, dimensions: "600x900bb.jpg")
-        let backdropURL = highResArtworkURL(from: rawArtwork, dimensions: "1000x1500bb.jpg")
-
-        let categoryLabel = entry.category?.attributes?.label ?? entry.category?.attributes?.term ?? "Drama"
-        let categoryID = forcedGenreID ?? entry.category?.attributes?.imId.flatMap(Int.init)
-        let projectType = forcedProjectType ?? classifyGenre(id: categoryID, label: categoryLabel)
-        var genresList = [categoryLabel]
-        if forcedGenreID == 4406 && !genresList.contains(where: { $0.localizedCaseInsensitiveContains("drama") }) {
-            genresList.append("Drama")
-        }
-
-        let releaseRaw = entry.releaseDate?.label
-        let releaseDate = releaseRaw.flatMap { ISO8601DateFormatter().date(from: $0) }
-            ?? releaseRaw.flatMap { CineVerseDateFormatters.isoDateParser.date(from: String($0.prefix(10))) }
-        let year = releaseRaw.flatMap { Int($0.prefix(4)) } ?? 2025
-
-        let previewLink = entry.links.first {
-            $0.attributes?.rel == "enclosure" || ($0.attributes?.type?.contains("video") == true)
-        }
-        let storeLink = entry.links.first { $0.attributes?.rel == "alternate" }?.attributes?.href
-
-        let previewURLString = previewLink?.attributes?.href
-        var extIDs: [MetadataProviderSource: String] = [:]
-        if let previewURLString, previewURLString.hasPrefix("https://") {
-            extIDs[.openCinema] = previewURLString
-        }
-
-        var officialLinks: [ExternalOfficialPlatformLink] = []
-        if let storeLink, let url = URL(string: storeLink), url.scheme == "https" {
-            officialLinks.append(
-                ExternalOfficialPlatformLink(id: "appletv-\(rawID)", siteName: "Apple TV", url: url)
-            )
-        }
-
-        let status: MediaReleaseStatus = (releaseDate ?? .distantPast) > Date() ? .upcoming : .finished
-        // Synthetic chart popularity + rating estimate from chart rank so sorting works smoothly
-        let chartScore = max(7.0, 8.8 - Double(min(rankIndex, 45)) * 0.035)
-        let ref = MediaReference(provider: .openCinema, kind: .movie, providerID: "itunes-\(rawID)")
-
-        return MediaItem(
-            id: ref.id,
-            externalIDs: extIDs,
-            primarySource: .openCinema,
-            projectType: projectType,
-            localizedTitle: title,
-            originalTitle: title,
-            synopsis: entry.summary?.label?.nilIfEmpty ?? "Available in the CineVerse Movie Catalog.",
-            releaseYear: year,
-            releaseDate: releaseDate,
-            countryOfOrigin: "US",
-            originalLanguage: "en",
-            ageRating: projectType == .cartoonMovie ? "6+" : "13+",
-            genres: genresList,
-            durationMinutes: 115,
-            totalSeasons: 1,
-            totalEpisodes: 1,
-            releaseStatus: status,
-            ratings: MultiSourceRatings(tmdbScore: chartScore),
-            popularityScore: Double(max(1000 - rankIndex * 10, 100)),
-            posterURL: posterURL,
-            backdropURL: backdropURL,
-            director: entry.artist?.label?.nilIfEmpty ?? "Feature Director",
-            trailerURL: previewURLString.flatMap(URL.init(string:)),
-            officialPlatformLinks: officialLinks
-        )
-    }
-
-    private func mapTrack(_ dto: ITunesTrackDTO, rankIndex: Int) -> MediaItem? {
-        guard let trackId = dto.trackId,
-              let title = (dto.trackName ?? dto.collectionName)?.nilIfEmpty else {
-            return nil
-        }
-
-        let genre = dto.primaryGenreName ?? "Movie"
-        let projectType = classifyGenre(id: nil, label: genre)
-        let posterURL = highResArtworkURL(from: dto.artworkUrl100, dimensions: "600x900bb.jpg")
-        let backdropURL = highResArtworkURL(from: dto.artworkUrl100, dimensions: "1000x1500bb.jpg")
-
-        let releaseDate = dto.releaseDate.flatMap { ISO8601DateFormatter().date(from: $0) }
-            ?? dto.releaseDate.flatMap { CineVerseDateFormatters.isoDateParser.date(from: String($0.prefix(10))) }
-        let year = dto.releaseDate.flatMap { Int($0.prefix(4)) } ?? 2024
-        let durationMins = max((dto.trackTimeMillis ?? 6_900_000) / 60_000, 1)
-
-        var extIDs: [MetadataProviderSource: String] = [:]
-        if let preview = dto.previewUrl, preview.hasPrefix("https://") {
-            extIDs[.openCinema] = preview
-        }
-
-        var officialLinks: [ExternalOfficialPlatformLink] = []
-        if let storeStr = dto.trackViewUrl, let url = URL(string: storeStr), url.scheme == "https" {
-            officialLinks.append(
-                ExternalOfficialPlatformLink(id: "appletv-\(trackId)", siteName: "Apple TV", url: url)
-            )
-        }
-
-        let ref = MediaReference(provider: .openCinema, kind: .movie, providerID: "itunes-\(trackId)")
-        return MediaItem(
-            id: ref.id,
-            externalIDs: extIDs,
-            primarySource: .openCinema,
-            projectType: projectType,
-            localizedTitle: title,
-            originalTitle: title,
-            synopsis: dto.longDescription?.nilIfEmpty ?? dto.shortDescription?.nilIfEmpty ?? "No description available.",
-            releaseYear: year,
-            releaseDate: releaseDate,
-            countryOfOrigin: dto.country ?? "US",
-            originalLanguage: "en",
-            ageRating: dto.contentAdvisoryRating?.nilIfEmpty ?? "13+",
-            genres: [genre],
-            durationMinutes: durationMins,
-            totalSeasons: 1,
-            totalEpisodes: 1,
-            releaseStatus: (releaseDate ?? .distantPast) > Date() ? .upcoming : .finished,
-            ratings: MultiSourceRatings(tmdbScore: max(7.2, 8.5 - Double(min(rankIndex, 30)) * 0.03)),
-            popularityScore: Double(max(850 - rankIndex * 12, 80)),
-            posterURL: posterURL,
-            backdropURL: backdropURL,
-            director: dto.artistName?.nilIfEmpty ?? "Director",
-            trailerURL: dto.previewUrl.flatMap(URL.init(string:)),
-            officialPlatformLinks: officialLinks
-        )
-    }
-
-    private func classifyGenre(id: Int?, label: String) -> MediaProjectType {
-        let lower = label.lowercased()
-        if id == 4410 || lower.contains("kids") || lower.contains("animation") || lower.contains("family") {
-            return .cartoonMovie
-        }
-        if id == 4405 || lower.contains("documentary") {
-            return .documentary
-        }
-        if id == 4431 || lower.contains("anime") {
-            return .animeMovie
-        }
-        return .movie
-    }
-
-    private func highResArtworkURL(from raw: String?, dimensions: String) -> URL? {
-        guard let raw = raw?.nilIfEmpty else { return nil }
-        guard let lastSlash = raw.lastIndex(of: "/") else {
-            return URL(string: raw)
-        }
-        let prefix = String(raw[..<lastSlash])
-        return URL(string: "\(prefix)/\(dimensions)")
     }
 }

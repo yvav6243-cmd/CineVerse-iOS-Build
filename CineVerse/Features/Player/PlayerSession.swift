@@ -14,6 +14,8 @@ public final class PlayerSession {
     public private(set) var upNextCountdown: Int = 5
     public private(set) var nextEpisode: MediaEpisode?
     public private(set) var nextSelection: PreWatchPlaybackSelection?
+    public private(set) var alternativeSources: [VideoSourceDescriptor] = []
+    public private(set) var isSwitchingSource: Bool = false
 
     private let progressRepository: ProgressRepositoryProtocol
     private let libraryRepository: LibraryRepositoryProtocol
@@ -53,6 +55,13 @@ public final class PlayerSession {
     public func start() {
         loadSelection(selection)
         configureRemoteCommands()
+        let currentItem = selection.mediaItem
+        let currentEp = selection.episode
+        Task {
+            alternativeSources = await sourceManager
+                .resolveSources(for: currentItem, episode: currentEp)
+                .filter { $0.isAvailable && $0.format.isDirectlyPlayable }
+        }
         Task {
             if let posterURL = selection.mediaItem.posterURL {
                 cachedArtwork = await ImagePipeline.shared.image(
@@ -62,6 +71,53 @@ public final class PlayerSession {
                 )
             }
         }
+    }
+
+    public func switchSource(to source: VideoSourceDescriptor) async {
+        guard source.id != selection.source.id else { return }
+        isSwitchingSource = true
+        defer { isSwitchingSource = false }
+
+        let inspected = await sourceManager.inspect(
+            source,
+            originalLanguage: selection.mediaItem.originalLanguage
+        )
+
+        let preferredTier = engine.selectedQuality?.tier
+        let nextQuality = inspected.availableQualities.first(where: { $0.tier == preferredTier })
+            ?? inspected.availableQualities.first
+            ?? VideoQualityVariant(id: "auto", tier: .auto, variantStreamURL: inspected.playbackURL)
+
+        let preferredAudioLang = engine.selectedAudioTrack?.languageCode.lowercased()
+        let nextAudio = inspected.availableAudioTracks.first(where: { $0.languageCode.lowercased() == preferredAudioLang })
+            ?? inspected.availableAudioTracks.first
+            ?? selection.selectedAudioTrack
+
+        let nextSubtitle: SubtitleTrackOption?
+        if let currentSubLang = engine.selectedSubtitleTrack?.languageCode.lowercased() {
+            nextSubtitle = inspected.availableSubtitles.first(where: { $0.languageCode.lowercased() == currentSubLang })
+        } else {
+            nextSubtitle = nil
+        }
+
+        let openPrefix = "openstream:\(selection.mediaItem.id):"
+        let keepPosition = !OpenCinemaLibrary.streams(forItemID: selection.mediaItem.id).isEmpty
+            && selection.source.id.hasPrefix(openPrefix)
+            && source.id.hasPrefix(openPrefix)
+
+        let updatedSelection = PreWatchPlaybackSelection(
+            mediaItem: selection.mediaItem,
+            episode: selection.episode,
+            source: inspected,
+            selectedQuality: nextQuality,
+            selectedAudioTrack: nextAudio,
+            selectedSubtitleTrack: nextSubtitle,
+            startPositionSeconds: keepPosition ? engine.currentTime : 0
+        )
+
+        persistProgress(force: true)
+        loadSelection(updatedSelection)
+        engine.play()
     }
 
     public func selectQuality(_ quality: VideoQualityVariant) {

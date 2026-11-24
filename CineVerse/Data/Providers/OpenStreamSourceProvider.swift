@@ -11,60 +11,79 @@ public final class OpenStreamSourceProvider: VideoSourceProvider, @unchecked Sen
     }
 
     public func sources(for item: MediaItem, episode: MediaEpisode?) async -> [VideoSourceDescriptor] {
-        // 1. Check if item is a full-length CineVerse Open Cinema title (HLS / MP4)
-        if let ref = item.reference, ref.provider == .openCinema, ref.providerID.hasPrefix("open-"),
-           let openStream = iTunesService.streamURLForOpenCinema(providerID: ref.providerID) {
-            return [
-                VideoSourceDescriptor(
-                    id: "openstream:\(item.id)",
-                    providerID: id,
-                    providerName: openStream.label,
-                    sourceDescription: "Full-length adaptive HD cinema stream",
-                    isAvailable: true,
-                    format: openStream.format,
-                    playbackURL: openStream.url,
+        var collected: [VideoSourceDescriptor] = []
+        var seenURLs: Set<String> = []
+
+        // 1. Open Cinema full-length multi-mirror streams
+        let openStreams = OpenCinemaLibrary.streams(forItemID: item.id)
+        for (index, stream) in openStreams.enumerated() {
+            guard seenURLs.insert(stream.url.absoluteString).inserted else { continue }
+            let isHLS = stream.url.pathExtension.lowercased() == "m3u8"
+                || stream.url.absoluteString.contains(".m3u8")
+            collected.append(
+                makeDirectDescriptor(
+                    id: "openstream:\(item.id):\(index)",
+                    url: stream.url,
+                    format: isHLS ? .hls : .mp4,
+                    label: "CineVerse Open Cinema · \(stream.label)",
+                    description: stream.note,
+                    language: item.originalLanguage,
                     episodeID: episode?.id
                 )
-            ]
+            )
         }
 
-        // 2. Check if item already carries a direct verified HTTPS video stream URL (e.g. Apple CDN .m4v)
+        // 2. Direct verified HTTPS video stream attached on the item (e.g. Apple CDN .m4v)
         if let embeddedRaw = item.externalIDs[.openCinema],
            embeddedRaw.hasPrefix("https://"),
-           let directURL = URL(string: embeddedRaw) {
-            let fmt: VideoStreamFormat = embeddedRaw.contains(".m3u8") ? .hls : .mp4
-            return [
+           let directURL = URL(string: embeddedRaw),
+           directURL.scheme?.lowercased() == "https",
+           seenURLs.insert(directURL.absoluteString).inserted {
+            let fmt: VideoStreamFormat = (directURL.pathExtension.lowercased() == "m3u8" || embeddedRaw.contains(".m3u8")) ? .hls : .mp4
+            collected.append(
                 makeDirectDescriptor(
                     id: "openstream-direct:\(item.id)",
                     url: directURL,
                     format: fmt,
-                    label: "CineVerse Direct Stream (HD)",
+                    label: "Official Trailer (Apple)",
+                    description: "Direct verified HTTPS stream",
                     language: item.originalLanguage,
                     episodeID: episode?.id
                 )
-            ]
+            )
         }
 
-        // 3. Automatically resolve a direct playable HTTPS stream by title via Apple Cinema Lookup (no user URL input needed!)
-        if let resolvedURL = await iTunesService.findPlayablePreviewURL(
-            title: item.localizedTitle,
-            originalTitle: item.originalTitle,
-            isEpisodic: item.projectType.isEpisodic,
-            episodeNumber: episode?.episodeNumber
-        ) {
-            return [
-                makeDirectDescriptor(
-                    id: "openstream-auto:\(item.id):\(episode?.id ?? "main")",
-                    url: resolvedURL,
-                    format: .mp4,
-                    label: "CineVerse Direct Stream (Official HD Preview)",
-                    language: item.originalLanguage,
-                    episodeID: episode?.id
+        // 3. Multiple official Apple previews/trailers resolved automatically by title
+        let isOpenCinemaItem = !openStreams.isEmpty
+            || (item.reference?.provider == .openCinema && item.reference?.providerID.hasPrefix("open-") == true)
+
+        if !isOpenCinemaItem {
+            let matches = await iTunesService.findPlayablePreviews(
+                title: item.localizedTitle,
+                originalTitle: item.originalTitle,
+                isEpisodic: item.projectType.isEpisodic,
+                seasonNumber: episode?.seasonNumber,
+                episodeNumber: episode?.episodeNumber,
+                limit: 6
+            )
+            let epKey = episode?.id ?? "main"
+            for (index, match) in matches.enumerated() {
+                guard seenURLs.insert(match.url.absoluteString).inserted else { continue }
+                collected.append(
+                    makeDirectDescriptor(
+                        id: "openstream-auto:\(item.id):\(epKey):\(index)",
+                        url: match.url,
+                        format: .mp4,
+                        label: match.label,
+                        description: "Official Apple preview stream ready in CineVerse player",
+                        language: item.originalLanguage,
+                        episodeID: episode?.id
+                    )
                 )
-            ]
+            }
         }
 
-        return []
+        return collected
     }
 
     private func makeDirectDescriptor(
@@ -72,6 +91,7 @@ public final class OpenStreamSourceProvider: VideoSourceProvider, @unchecked Sen
         url: URL,
         format: VideoStreamFormat,
         label: String,
+        description: String,
         language: String,
         episodeID: String?
     ) -> VideoSourceDescriptor {
@@ -88,7 +108,7 @@ public final class OpenStreamSourceProvider: VideoSourceProvider, @unchecked Sen
             id: id,
             providerID: self.id,
             providerName: label,
-            sourceDescription: "Ready to play without external links",
+            sourceDescription: description,
             isAvailable: true,
             format: format,
             playbackURL: url,

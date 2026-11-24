@@ -20,12 +20,26 @@ public struct MediaDetailsView: View {
     @State private var showNotesSheet: Bool = false
     @State private var addSourceContext: AddSourceContext?
     @State private var inAppSafariItem: InAppSafariSheetItem?
+    @State private var embeddedTrailer: EmbeddedTrailerItem?
     @State private var showSubtitleImporter: Bool = false
 
     private var inAppWebURLBinding: Binding<URL?> {
         Binding(
             get: { inAppSafariItem?.url },
             set: { newURL in inAppSafariItem = newURL.map(InAppSafariSheetItem.init) }
+        )
+    }
+
+    private func trailerURLBinding(for item: MediaItem) -> Binding<URL?> {
+        Binding(
+            get: { inAppSafariItem?.url },
+            set: { newURL in
+                guard let newURL else {
+                    inAppSafariItem = nil
+                    return
+                }
+                handleTrailerURL(newURL, for: item, allowSafariFallback: true)
+            }
         )
     }
 
@@ -136,6 +150,9 @@ public struct MediaDetailsView: View {
             InAppSafariView(url: safariItem.url)
                 .ignoresSafeArea()
         }
+        .fullScreenCover(item: $embeddedTrailer) { trailerItem in
+            EmbeddedTrailerPlayerView(item: trailerItem)
+        }
     }
 
     @ViewBuilder
@@ -167,7 +184,7 @@ public struct MediaDetailsView: View {
                     }
                     setupPanel(for: item)
                     synopsisSection(item: item)
-                    TrailerCard(trailerURL: item.trailerURL, backdropURL: item.backdropURL ?? item.posterURL, title: item.localizedTitle, pendingExternalURL: inAppWebURLBinding)
+                    TrailerCard(trailerURL: item.trailerURL, backdropURL: item.backdropURL ?? item.posterURL, title: item.localizedTitle, pendingExternalURL: trailerURLBinding(for: item))
                     episodesBlock(for: item, scrollProxy: scrollProxy)
                     CastRailView(cast: item.cast)
                     OfficialServicesSection(links: item.officialPlatformLinks, pendingExternalURL: inAppWebURLBinding)
@@ -184,7 +201,7 @@ public struct MediaDetailsView: View {
         let cta = viewModel.primaryWatchCTA
         return DetailsActionBar(
             primaryCTATitle: cta.title,
-            hasPlayableSource: true,
+            hasPlayableSource: playbackSetupVM.hasPlayableSource || item.trailerURL != nil,
             trackingStatus: viewModel.libraryEntry?.status,
             inWatchlist: viewModel.libraryEntry?.inWatchlist ?? false,
             isFavorite: viewModel.libraryEntry?.isFavorite ?? false,
@@ -211,7 +228,12 @@ public struct MediaDetailsView: View {
                 addSourceContext = AddSourceContext(item: item, episode: playbackSetupVM.selectedEpisode, initialTab: tab)
             },
             onImportSubtitle: { showSubtitleImporter = true },
-            onOpenOfficialURL: { inAppSafariItem = InAppSafariSheetItem(url: $0) }
+            onOpenOfficialURL: { inAppSafariItem = InAppSafariSheetItem(url: $0) },
+            onPlayTrailer: {
+                if let trailerURL = item.trailerURL {
+                    handleTrailerURL(trailerURL, for: item, allowSafariFallback: false)
+                }
+            }
         )
         .id("playbackSetup")
     }
@@ -361,24 +383,37 @@ public struct MediaDetailsView: View {
             }
             if let selection = playbackSetupVM.buildPlaybackSelection(startPositionSeconds: startPosition) {
                 container.coordinator.presentPlayer(selection)
-            } else if let directWebURL = item.trailerURL ?? item.officialPlatformLinks.first?.url ?? instantWebFallbackURL(for: item, episode: episode) {
-                inAppSafariItem = InAppSafariSheetItem(url: directWebURL)
+            } else if let trailerURL = item.trailerURL, isDirectVideoURL(trailerURL) {
+                await playDirectTrailer(url: trailerURL, item: item)
+            } else if let trailerURL = item.trailerURL, let videoID = EmbeddedTrailerItem.youTubeID(from: trailerURL) {
+                embeddedTrailer = EmbeddedTrailerItem(videoID: videoID, title: item.localizedTitle)
             } else {
                 withAnimation(CVMotion.spring) { scrollProxy.scrollTo("playbackSetup", anchor: .top) }
             }
         }
     }
 
-    private func instantWebFallbackURL(for item: MediaItem, episode: MediaEpisode?) -> URL? {
-        var query = item.localizedTitle
-        if let episode {
-            query += " S\(episode.seasonNumber)E\(episode.episodeNumber)"
-        } else if item.releaseYear > 0 {
-            query += " \(item.releaseYear) trailer"
+    private func handleTrailerURL(_ url: URL, for item: MediaItem, allowSafariFallback: Bool) {
+        if isDirectVideoURL(url) {
+            Task { await playDirectTrailer(url: url, item: item) }
+        } else if let videoID = EmbeddedTrailerItem.youTubeID(from: url) {
+            embeddedTrailer = EmbeddedTrailerItem(videoID: videoID, title: item.localizedTitle)
+        } else if allowSafariFallback {
+            inAppSafariItem = InAppSafariSheetItem(url: url)
         }
-        var comps = URLComponents(string: "https://m.youtube.com/results")
-        comps?.queryItems = [URLQueryItem(name: "search_query", value: query)]
-        return comps?.url
+    }
+
+    private func isDirectVideoURL(_ url: URL) -> Bool {
+        let ext = url.pathExtension.lowercased()
+        if ["m4v", "mp4", "mov", "m3u8"].contains(ext) {
+            return true
+        }
+        return url.absoluteString.lowercased().contains(".m3u8")
+    }
+
+    private func playDirectTrailer(url: URL, item: MediaItem) async {
+        let selection = await playbackSetupVM.buildDirectTrailerSelection(url: url, for: item)
+        container.coordinator.presentPlayer(selection)
     }
 
     private func syncDefaultEpisodeIfNeeded() async {
