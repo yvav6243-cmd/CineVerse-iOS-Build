@@ -79,6 +79,9 @@ public struct TVMazeEmbeddedDTO: Decodable, Sendable {
     public let cast: [TVMazeCastMemberDTO]?
     public let seasons: [TVMazeSeasonDTO]?
     public let episodes: [TVMazeEpisodeDTO]?
+}
+
+public struct TVMazeScheduleEmbeddedDTO: Decodable, Sendable {
     public let show: TVMazeShowDTO?
 }
 
@@ -125,7 +128,7 @@ public struct TVMazeScheduleEntryDTO: Decodable, Sendable {
     public let airdate: String?
     public let airstamp: String?
     public let show: TVMazeShowDTO?
-    public let embedded: TVMazeEmbeddedDTO?
+    public let embedded: TVMazeScheduleEmbeddedDTO?
 
     enum CodingKeys: String, CodingKey {
         case id, name, season, number, airdate, airstamp, show
