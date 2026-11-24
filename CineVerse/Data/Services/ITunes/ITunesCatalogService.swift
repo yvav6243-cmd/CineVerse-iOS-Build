@@ -140,12 +140,14 @@ public final class ITunesCatalogService: ITunesCatalogServiceProtocol, @unchecke
         guard let track = res.results?.first(where: { $0.trackId != nil }) else {
             return nil
         }
-        var mapped = mapTrack(track, rankIndex: 0)
-        // Attach similar movies from matching genre
+        guard var mapped = mapTrack(track, rankIndex: 0) else {
+            return nil
+        }
+        let currentID = mapped.id
         if let genreName = track.primaryGenreName,
            let matchedGenreID = Self.genreIDsByName.first(where: { $0.name.lowercased() == genreName.lowercased() })?.id,
            let related = try? await topMovies(genreID: matchedGenreID, limit: 12) {
-            mapped?.similarProjectIDs = related.filter { $0.id != mapped?.id }.prefix(10).map(\.id)
+            mapped.similarProjectIDs = related.filter { $0.id != currentID }.prefix(10).map(\.id)
         }
         return mapped
     }
