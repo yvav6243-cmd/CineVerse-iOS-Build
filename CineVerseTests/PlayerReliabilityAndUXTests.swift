@@ -254,7 +254,7 @@ struct PlayerReliabilityAndUXTests {
         #expect(abs(session1.engine.currentTime - 185) < 0.5)
         session1.endSession()
 
-        let saved = progRepo.progress(for: selection.mediaItem.id, season: 0, episode: 0)
+        let saved = progRepo.progress(mediaID: selection.mediaItem.id, season: 0, episode: 0)
         let restoredStart = saved?.positionSeconds ?? 0
         #expect(abs(restoredStart - 185) < 1.0)
 
