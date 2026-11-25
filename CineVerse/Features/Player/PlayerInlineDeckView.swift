@@ -2,6 +2,8 @@ import SwiftUI
 
 public struct PlayerInlineDeckView: View {
     let session: PlayerSession
+    let scalingMode: VideoScalingMode
+    let onSelectScalingMode: (VideoScalingMode) -> Void
     let onEnterFullscreen: () -> Void
     let onOpenSettings: () -> Void
 
@@ -10,10 +12,14 @@ public struct PlayerInlineDeckView: View {
 
     public init(
         session: PlayerSession,
+        scalingMode: VideoScalingMode = .fit,
+        onSelectScalingMode: @escaping (VideoScalingMode) -> Void = { _ in },
         onEnterFullscreen: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void
     ) {
         self.session = session
+        self.scalingMode = scalingMode
+        self.onSelectScalingMode = onSelectScalingMode
         self.onEnterFullscreen = onEnterFullscreen
         self.onOpenSettings = onOpenSettings
         _selectedSeasonNumber = State(initialValue: session.selection.episode?.seasonNumber ?? 1)
@@ -63,21 +69,39 @@ public struct PlayerInlineDeckView: View {
                 .buttonStyle(CVPrimaryButtonStyle(compact: true))
             }
 
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(session.engine.isReady ? CVColor.success : CVColor.warning)
-                    .frame(width: 7, height: 7)
-                Text("Decoded Output: \(session.engine.diagnostics.fullTechnicalSummary)")
-                    .font(CVFont.micro.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(statusDotColor)
+                        .frame(width: 7, height: 7)
+                    Text("\(session.engine.playbackState.rawValue) · \(session.engine.diagnostics.fullTechnicalSummary)")
+                        .font(CVFont.micro.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                if let limitNote = session.sourceQualityLimitationNote {
+                    Text(limitNote)
+                        .font(CVFont.micro)
+                        .foregroundStyle(CVColor.warning)
+                        .lineLimit(2)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
-        .padding(CVSpacing.md)
+        .padding(CVSpacing.sm)
         .cvGlass(RoundedRectangle(cornerRadius: CVRadius.card, style: .continuous))
+    }
+
+    private var statusDotColor: Color {
+        switch session.engine.playbackState {
+        case .playing, .ready: return CVColor.success
+        case .loading, .buffering: return CVColor.warning
+        case .paused: return .secondary
+        case .failed: return CVColor.danger
+        }
     }
 
     private var quickSpeedAndAudioSection: some View {
@@ -118,6 +142,25 @@ public struct PlayerInlineDeckView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
+                    ForEach(VideoScalingMode.allCases) { mode in
+                        let active = scalingMode == mode
+                        Button {
+                            Haptics.selection()
+                            onSelectScalingMode(mode)
+                        } label: {
+                            Label(mode.rawValue, systemImage: mode.symbolName)
+                                .font(CVFont.micro.weight(.bold))
+                                .foregroundStyle(active ? .white : .secondary)
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 5)
+                                .background(
+                                    active ? AnyShapeStyle(CVColor.iris) : AnyShapeStyle(.ultraThinMaterial),
+                                    in: Capsule(style: .continuous)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+
                     ForEach(rates, id: \.self) { rate in
                         let active = session.engine.playbackRate == rate
                         Button {

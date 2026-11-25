@@ -34,21 +34,25 @@ public struct RatingBadge: View {
 
 public struct TypeBadge: View {
     let projectType: MediaProjectType
+    var iconOnly: Bool = false
 
-    public init(projectType: MediaProjectType) {
+    public init(projectType: MediaProjectType, iconOnly: Bool = false) {
         self.projectType = projectType
+        self.iconOnly = iconOnly
     }
 
     public var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 3) {
             Image(systemName: projectType.symbolName)
                 .font(.system(size: 9, weight: .semibold))
-            Text(projectType.displayName)
-                .font(CVFont.micro)
-                .lineLimit(1)
+            if !iconOnly {
+                Text(projectType.displayName)
+                    .font(CVFont.micro)
+                    .lineLimit(1)
+            }
         }
         .foregroundStyle(.primary)
-        .padding(.horizontal, 7)
+        .padding(.horizontal, iconOnly ? 5 : 7)
         .padding(.vertical, 3)
         .background(.ultraThinMaterial, in: Capsule(style: .continuous))
         .overlay(

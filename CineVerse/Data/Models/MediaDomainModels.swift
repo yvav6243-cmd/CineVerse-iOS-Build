@@ -277,6 +277,8 @@ public struct MediaItem: Codable, Identifiable, Hashable, Sendable {
     public let backdropURL: URL?
     public let bannerAccentHex: String?
     public let director: String
+    public var studio: String
+    public var alternativeTitles: [String]
     public var cast: [MediaCreditPerson]
     public var seasons: [MediaSeason]
     public let trailerURL: URL?
@@ -309,6 +311,8 @@ public struct MediaItem: Codable, Identifiable, Hashable, Sendable {
         backdropURL: URL? = nil,
         bannerAccentHex: String? = nil,
         director: String = "Unknown Director",
+        studio: String = "",
+        alternativeTitles: [String] = [],
         cast: [MediaCreditPerson] = [],
         seasons: [MediaSeason] = [],
         trailerURL: URL? = nil,
@@ -324,15 +328,15 @@ public struct MediaItem: Codable, Identifiable, Hashable, Sendable {
         self.localizedTitle = localizedTitle
         self.originalTitle = originalTitle
         self.synopsis = synopsis
-        self.releaseYear = releaseYear
+        self.releaseYear = (1888...2100).contains(releaseYear) ? releaseYear : 0
         self.releaseDate = releaseDate
         self.countryOfOrigin = countryOfOrigin
         self.originalLanguage = originalLanguage
         self.ageRating = ageRating
         self.genres = genres
-        self.durationMinutes = durationMinutes
-        self.totalSeasons = totalSeasons
-        self.totalEpisodes = totalEpisodes
+        self.durationMinutes = max(0, durationMinutes)
+        self.totalSeasons = max(1, totalSeasons)
+        self.totalEpisodes = max(1, totalEpisodes)
         self.releaseStatus = releaseStatus
         self.ratings = ratings
         self.popularityScore = popularityScore
@@ -340,6 +344,8 @@ public struct MediaItem: Codable, Identifiable, Hashable, Sendable {
         self.backdropURL = backdropURL
         self.bannerAccentHex = bannerAccentHex
         self.director = director
+        self.studio = studio
+        self.alternativeTitles = alternativeTitles
         self.cast = cast
         self.seasons = seasons
         self.trailerURL = trailerURL
@@ -347,6 +353,52 @@ public struct MediaItem: Codable, Identifiable, Hashable, Sendable {
         self.similarProjectIDs = similarProjectIDs
         self.nextAiringEpisodeNumber = nextAiringEpisodeNumber
         self.nextAiringDate = nextAiringDate
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, externalIDs, primarySource, projectType, localizedTitle, originalTitle, synopsis
+        case releaseYear, releaseDate, countryOfOrigin, originalLanguage, ageRating, genres
+        case durationMinutes, totalSeasons, totalEpisodes, releaseStatus, ratings, popularityScore
+        case posterURL, backdropURL, bannerAccentHex, director, studio, alternativeTitles
+        case cast, seasons, trailerURL, officialPlatformLinks, similarProjectIDs
+        case nextAiringEpisodeNumber, nextAiringDate
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        externalIDs = (try? c.decode([MetadataProviderSource: String].self, forKey: .externalIDs)) ?? [:]
+        primarySource = try c.decode(MetadataProviderSource.self, forKey: .primarySource)
+        projectType = try c.decode(MediaProjectType.self, forKey: .projectType)
+        localizedTitle = try c.decode(String.self, forKey: .localizedTitle)
+        originalTitle = try c.decode(String.self, forKey: .originalTitle)
+        synopsis = (try? c.decode(String.self, forKey: .synopsis)) ?? ""
+        let rawYear = (try? c.decode(Int.self, forKey: .releaseYear)) ?? 0
+        releaseYear = (1888...2100).contains(rawYear) ? rawYear : 0
+        releaseDate = try? c.decodeIfPresent(Date.self, forKey: .releaseDate)
+        countryOfOrigin = (try? c.decode(String.self, forKey: .countryOfOrigin)) ?? "US"
+        originalLanguage = (try? c.decode(String.self, forKey: .originalLanguage)) ?? "en"
+        ageRating = (try? c.decode(String.self, forKey: .ageRating)) ?? "16+"
+        genres = (try? c.decode([String].self, forKey: .genres)) ?? []
+        durationMinutes = (try? c.decode(Int.self, forKey: .durationMinutes)) ?? 0
+        totalSeasons = (try? c.decode(Int.self, forKey: .totalSeasons)) ?? 1
+        totalEpisodes = (try? c.decode(Int.self, forKey: .totalEpisodes)) ?? 1
+        releaseStatus = (try? c.decode(MediaReleaseStatus.self, forKey: .releaseStatus)) ?? .finished
+        ratings = (try? c.decode(MultiSourceRatings.self, forKey: .ratings)) ?? MultiSourceRatings()
+        popularityScore = (try? c.decode(Double.self, forKey: .popularityScore)) ?? 100
+        posterURL = try? c.decodeIfPresent(URL.self, forKey: .posterURL)
+        backdropURL = try? c.decodeIfPresent(URL.self, forKey: .backdropURL)
+        bannerAccentHex = try? c.decodeIfPresent(String.self, forKey: .bannerAccentHex)
+        director = (try? c.decode(String.self, forKey: .director)) ?? "Unknown Director"
+        studio = (try? c.decode(String.self, forKey: .studio)) ?? ""
+        alternativeTitles = (try? c.decode([String].self, forKey: .alternativeTitles)) ?? []
+        cast = (try? c.decode([MediaCreditPerson].self, forKey: .cast)) ?? []
+        seasons = (try? c.decode([MediaSeason].self, forKey: .seasons)) ?? []
+        trailerURL = try? c.decodeIfPresent(URL.self, forKey: .trailerURL)
+        officialPlatformLinks = (try? c.decode([ExternalOfficialPlatformLink].self, forKey: .officialPlatformLinks)) ?? []
+        similarProjectIDs = (try? c.decode([String].self, forKey: .similarProjectIDs)) ?? []
+        nextAiringEpisodeNumber = try? c.decodeIfPresent(Int.self, forKey: .nextAiringEpisodeNumber)
+        nextAiringDate = try? c.decodeIfPresent(Date.self, forKey: .nextAiringDate)
     }
 
     public var displayRating: Double {

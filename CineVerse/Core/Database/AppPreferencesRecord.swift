@@ -34,6 +34,11 @@ public final class AppPreferencesRecord {
     public var homeSectionsData: Data
     public var subtitleStyleData: Data
     public var watchRegion: String
+    public var audioLanguagePriorityData: Data?
+    public var preferredGenresData: Data?
+    public var gestureSensitivity: Double
+
+    public static let defaultAudioPriority: [String] = ["ru", "ja", "en", "kk"]
 
     public init(
         singletonKey: String = "main",
@@ -49,7 +54,10 @@ public final class AppPreferencesRecord {
         episodeAlertsEnabled: Bool = false,
         homeSections: [HomeSectionConfiguration] = HomeSectionConfiguration.defaultConfigurations,
         subtitleStyle: SubtitleAppearanceStyle = SubtitleAppearanceStyle(),
-        watchRegion: String = Locale.current.region?.identifier ?? "US"
+        watchRegion: String = Locale.current.region?.identifier ?? "US",
+        audioLanguagePriority: [String] = AppPreferencesRecord.defaultAudioPriority,
+        preferredGenres: [String] = [],
+        gestureSensitivity: Double = 1.0
     ) {
         self.singletonKey = singletonKey
         self.profileName = profileName
@@ -65,6 +73,9 @@ public final class AppPreferencesRecord {
         self.homeSectionsData = (try? JSONEncoder().encode(homeSections)) ?? Data()
         self.subtitleStyleData = (try? JSONEncoder().encode(subtitleStyle)) ?? Data()
         self.watchRegion = watchRegion
+        self.audioLanguagePriorityData = try? JSONEncoder().encode(audioLanguagePriority)
+        self.preferredGenresData = try? JSONEncoder().encode(preferredGenres)
+        self.gestureSensitivity = min(max(gestureSensitivity, 0.5), 2.0)
     }
 
     public var theme: AppThemePreference {
@@ -97,6 +108,30 @@ public final class AppPreferencesRecord {
         }
         set {
             subtitleStyleData = (try? JSONEncoder().encode(newValue)) ?? Data()
+        }
+    }
+
+    public var audioLanguagePriority: [String] {
+        get {
+            if let data = audioLanguagePriorityData,
+               let decoded = try? JSONDecoder().decode([String].self, from: data),
+               !decoded.isEmpty {
+                return decoded
+            }
+            return Self.defaultAudioPriority
+        }
+        set {
+            audioLanguagePriorityData = try? JSONEncoder().encode(newValue)
+        }
+    }
+
+    public var preferredGenres: [String] {
+        get {
+            guard let data = preferredGenresData else { return [] }
+            return (try? JSONDecoder().decode([String].self, from: data)) ?? []
+        }
+        set {
+            preferredGenresData = try? JSONEncoder().encode(newValue)
         }
     }
 

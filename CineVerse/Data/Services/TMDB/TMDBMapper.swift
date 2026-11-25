@@ -72,43 +72,60 @@ public enum TMDBMapper {
     }
 
     public static func mapMultiSearch(_ dto: TMDBMultiSearchDTO) -> MediaItem? {
-        guard let mediaType = dto.mediaType else { return nil }
+        mapMultiSearchItems(dto).first
+    }
+
+    public static func mapMultiSearchItems(_ dto: TMDBMultiSearchDTO) -> [MediaItem] {
+        guard let mediaType = dto.mediaType else { return [] }
         if mediaType == "movie" {
             let movie = TMDBMovieSummaryDTO(
-                id: dto.id,
-                title: dto.title,
-                originalTitle: dto.originalTitle,
-                overview: dto.overview,
-                posterPath: dto.posterPath,
-                backdropPath: dto.backdropPath,
-                releaseDate: dto.releaseDate,
-                genreIds: dto.genreIds,
-                voteAverage: dto.voteAverage,
-                voteCount: dto.voteCount,
-                popularity: dto.popularity,
-                originalLanguage: dto.originalLanguage,
-                adult: false
+                id: dto.id, title: dto.title, originalTitle: dto.originalTitle, overview: dto.overview,
+                posterPath: dto.posterPath, backdropPath: dto.backdropPath, releaseDate: dto.releaseDate,
+                genreIds: dto.genreIds, voteAverage: dto.voteAverage, voteCount: dto.voteCount,
+                popularity: dto.popularity, originalLanguage: dto.originalLanguage, adult: false
             )
-            return mapMovieSummary(movie)
+            return [mapMovieSummary(movie)]
         } else if mediaType == "tv" {
             let tv = TMDBTVSummaryDTO(
-                id: dto.id,
-                name: dto.name,
-                originalName: dto.originalName,
-                overview: dto.overview,
-                posterPath: dto.posterPath,
-                backdropPath: dto.backdropPath,
-                firstAirDate: dto.firstAirDate,
-                genreIds: dto.genreIds,
-                originCountry: dto.originCountry,
-                voteAverage: dto.voteAverage,
-                voteCount: dto.voteCount,
-                popularity: dto.popularity,
-                originalLanguage: dto.originalLanguage
+                id: dto.id, name: dto.name, originalName: dto.originalName, overview: dto.overview,
+                posterPath: dto.posterPath, backdropPath: dto.backdropPath, firstAirDate: dto.firstAirDate,
+                genreIds: dto.genreIds, originCountry: dto.originCountry, voteAverage: dto.voteAverage,
+                voteCount: dto.voteCount, popularity: dto.popularity, originalLanguage: dto.originalLanguage
             )
-            return mapTVSummary(tv)
+            return [mapTVSummary(tv)]
+        } else if mediaType == "person", let knownList = dto.knownFor {
+            let personName = dto.name ?? ""
+            let isDirecting = dto.knownForDepartment?.lowercased() == "directing"
+            return knownList.compactMap { kf -> MediaItem? in
+                if kf.mediaType == "movie" {
+                    let movie = TMDBMovieSummaryDTO(
+                        id: kf.id, title: kf.title, originalTitle: kf.originalTitle, overview: kf.overview,
+                        posterPath: kf.posterPath, backdropPath: kf.backdropPath, releaseDate: kf.releaseDate,
+                        genreIds: kf.genreIds, voteAverage: kf.voteAverage, voteCount: kf.voteCount,
+                        popularity: kf.popularity, originalLanguage: kf.originalLanguage, adult: false
+                    )
+                    var item = mapMovieSummary(movie)
+                    if !personName.isEmpty {
+                        item.cast = [MediaCreditPerson(id: "tmdb:p:\(dto.id)", name: personName, roleOrCharacter: isDirecting ? "Director" : "Cast")]
+                    }
+                    return item
+                } else if kf.mediaType == "tv" {
+                    let tv = TMDBTVSummaryDTO(
+                        id: kf.id, name: kf.name, originalName: kf.originalName, overview: kf.overview,
+                        posterPath: kf.posterPath, backdropPath: kf.backdropPath, firstAirDate: kf.firstAirDate,
+                        genreIds: kf.genreIds, originCountry: kf.originCountry, voteAverage: kf.voteAverage,
+                        voteCount: kf.voteCount, popularity: kf.popularity, originalLanguage: kf.originalLanguage
+                    )
+                    var item = mapTVSummary(tv)
+                    if !personName.isEmpty {
+                        item.cast = [MediaCreditPerson(id: "tmdb:p:\(dto.id)", name: personName, roleOrCharacter: isDirecting ? "Creator" : "Cast")]
+                    }
+                    return item
+                }
+                return nil
+            }
         }
-        return nil
+        return []
     }
 
     public static func mapMovieDetails(_ dto: TMDBMovieDetailsDTO, watchRegion: String) -> MediaItem {
@@ -169,6 +186,7 @@ public enum TMDBMapper {
             posterURL: imageURL(path: dto.posterPath, size: "w500"),
             backdropURL: imageURL(path: dto.backdropPath, size: "w1280"),
             director: director,
+            studio: dto.productionCompanies?.first?.name ?? "",
             cast: cast,
             seasons: [],
             trailerURL: trailerURL,

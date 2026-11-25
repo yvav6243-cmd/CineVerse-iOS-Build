@@ -82,6 +82,7 @@
 		CACEE91706EB68DB3545BBB6 /* DetailsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 992D87C4C57251479D919E52 /* DetailsRepository.swift */; };
 		0990683D7A117B28494DE62C /* LibraryRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FF5736E5439A58B4C63CAEF /* LibraryRepository.swift */; };
 		DC7133724ADE03909627FA0D /* MediaMerger.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8C1033C4C2BB5DDA0F790E9 /* MediaMerger.swift */; };
+		BE4AC44B8468BAAA2CD4D5A6 /* PlayableCatalogEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B374F38AFB330BC69C3B5A9 /* PlayableCatalogEvaluator.swift */; };
 		5DE0C06D19B3C7025F73B895 /* ProgressRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90F6D6929CB4363040BBB829 /* ProgressRepository.swift */; };
 		B91A49356DCC3240BD5CB2DA /* SearchHistoryRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEFB96FDAED0C1EA2737D5FF /* SearchHistoryRepository.swift */; };
 		ED3BA8FE9FE20D502294C2BF /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CCD771BFED31AB6CB686C48 /* SettingsStore.swift */; };
@@ -197,6 +198,7 @@
 		597296C2E3BBDDE883DA917C /* MapperDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 205CD9999317DB39C839DA04 /* MapperDecodingTests.swift */; };
 		3A1AE4E0E7399C6C8F624B80 /* OpenCinemaLibraryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFFC451A235AA1C14AE6D6D6 /* OpenCinemaLibraryTests.swift */; };
 		DA7A810BDF4DFD362CB7B68A /* PlaybackQualityEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1DE03A2E9066AEE67E8C1D4 /* PlaybackQualityEngineTests.swift */; };
+		D10420EE1D33309D73A78996 /* PlayerReliabilityAndUXTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224D2E61D984256BF5DF9EE7 /* PlayerReliabilityAndUXTests.swift */; };
 		AE91AF8CB64EF44A2A87F322 /* RecommendationEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C1955AFF42A0E4D62CE6A9 /* RecommendationEngineTests.swift */; };
 		DB4DDB5873D632B3B3CF3E13 /* SourceURLValidatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87E7E860F328F33DF267E20C /* SourceURLValidatorTests.swift */; };
 		93452C0E423D8147E0EA90CD /* SubtitleParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2AD17DB85262B12AAD871FE /* SubtitleParserTests.swift */; };
@@ -286,6 +288,7 @@
 		992D87C4C57251479D919E52 /* DetailsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DetailsRepository.swift"; path = "CineVerse/Data/Repositories/DetailsRepository.swift"; sourceTree = SOURCE_ROOT; };
 		9FF5736E5439A58B4C63CAEF /* LibraryRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "LibraryRepository.swift"; path = "CineVerse/Data/Repositories/LibraryRepository.swift"; sourceTree = SOURCE_ROOT; };
 		D8C1033C4C2BB5DDA0F790E9 /* MediaMerger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MediaMerger.swift"; path = "CineVerse/Data/Repositories/MediaMerger.swift"; sourceTree = SOURCE_ROOT; };
+		6B374F38AFB330BC69C3B5A9 /* PlayableCatalogEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "PlayableCatalogEvaluator.swift"; path = "CineVerse/Data/Repositories/PlayableCatalogEvaluator.swift"; sourceTree = SOURCE_ROOT; };
 		90F6D6929CB4363040BBB829 /* ProgressRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ProgressRepository.swift"; path = "CineVerse/Data/Repositories/ProgressRepository.swift"; sourceTree = SOURCE_ROOT; };
 		CEFB96FDAED0C1EA2737D5FF /* SearchHistoryRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SearchHistoryRepository.swift"; path = "CineVerse/Data/Repositories/SearchHistoryRepository.swift"; sourceTree = SOURCE_ROOT; };
 		0CCD771BFED31AB6CB686C48 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SettingsStore.swift"; path = "CineVerse/Data/Repositories/SettingsStore.swift"; sourceTree = SOURCE_ROOT; };
@@ -398,6 +401,7 @@
 		205CD9999317DB39C839DA04 /* MapperDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MapperDecodingTests.swift"; path = "CineVerseTests/MapperDecodingTests.swift"; sourceTree = SOURCE_ROOT; };
 		EFFC451A235AA1C14AE6D6D6 /* OpenCinemaLibraryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "OpenCinemaLibraryTests.swift"; path = "CineVerseTests/OpenCinemaLibraryTests.swift"; sourceTree = SOURCE_ROOT; };
 		C1DE03A2E9066AEE67E8C1D4 /* PlaybackQualityEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "PlaybackQualityEngineTests.swift"; path = "CineVerseTests/PlaybackQualityEngineTests.swift"; sourceTree = SOURCE_ROOT; };
+		224D2E61D984256BF5DF9EE7 /* PlayerReliabilityAndUXTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "PlayerReliabilityAndUXTests.swift"; path = "CineVerseTests/PlayerReliabilityAndUXTests.swift"; sourceTree = SOURCE_ROOT; };
 		C8C1955AFF42A0E4D62CE6A9 /* RecommendationEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RecommendationEngineTests.swift"; path = "CineVerseTests/RecommendationEngineTests.swift"; sourceTree = SOURCE_ROOT; };
 		87E7E860F328F33DF267E20C /* SourceURLValidatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SourceURLValidatorTests.swift"; path = "CineVerseTests/SourceURLValidatorTests.swift"; sourceTree = SOURCE_ROOT; };
 		E2AD17DB85262B12AAD871FE /* SubtitleParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SubtitleParserTests.swift"; path = "CineVerseTests/SubtitleParserTests.swift"; sourceTree = SOURCE_ROOT; };
@@ -523,6 +527,7 @@
 				992D87C4C57251479D919E52 /* DetailsRepository.swift */,
 				9FF5736E5439A58B4C63CAEF /* LibraryRepository.swift */,
 				D8C1033C4C2BB5DDA0F790E9 /* MediaMerger.swift */,
+				6B374F38AFB330BC69C3B5A9 /* PlayableCatalogEvaluator.swift */,
 				90F6D6929CB4363040BBB829 /* ProgressRepository.swift */,
 				CEFB96FDAED0C1EA2737D5FF /* SearchHistoryRepository.swift */,
 				0CCD771BFED31AB6CB686C48 /* SettingsStore.swift */,
@@ -635,6 +640,7 @@
 				205CD9999317DB39C839DA04 /* MapperDecodingTests.swift */,
 				EFFC451A235AA1C14AE6D6D6 /* OpenCinemaLibraryTests.swift */,
 				C1DE03A2E9066AEE67E8C1D4 /* PlaybackQualityEngineTests.swift */,
+				224D2E61D984256BF5DF9EE7 /* PlayerReliabilityAndUXTests.swift */,
 				C8C1955AFF42A0E4D62CE6A9 /* RecommendationEngineTests.swift */,
 				87E7E860F328F33DF267E20C /* SourceURLValidatorTests.swift */,
 				E2AD17DB85262B12AAD871FE /* SubtitleParserTests.swift */,
@@ -865,6 +871,7 @@
 				CACEE91706EB68DB3545BBB6 /* DetailsRepository.swift in Sources */,
 				0990683D7A117B28494DE62C /* LibraryRepository.swift in Sources */,
 				DC7133724ADE03909627FA0D /* MediaMerger.swift in Sources */,
+				BE4AC44B8468BAAA2CD4D5A6 /* PlayableCatalogEvaluator.swift in Sources */,
 				5DE0C06D19B3C7025F73B895 /* ProgressRepository.swift in Sources */,
 				B91A49356DCC3240BD5CB2DA /* SearchHistoryRepository.swift in Sources */,
 				ED3BA8FE9FE20D502294C2BF /* SettingsStore.swift in Sources */,
@@ -991,6 +998,7 @@
 				597296C2E3BBDDE883DA917C /* MapperDecodingTests.swift in Sources */,
 				3A1AE4E0E7399C6C8F624B80 /* OpenCinemaLibraryTests.swift in Sources */,
 				DA7A810BDF4DFD362CB7B68A /* PlaybackQualityEngineTests.swift in Sources */,
+				D10420EE1D33309D73A78996 /* PlayerReliabilityAndUXTests.swift in Sources */,
 				AE91AF8CB64EF44A2A87F322 /* RecommendationEngineTests.swift in Sources */,
 				DB4DDB5873D632B3B3CF3E13 /* SourceURLValidatorTests.swift in Sources */,
 				93452C0E423D8147E0EA90CD /* SubtitleParserTests.swift in Sources */,

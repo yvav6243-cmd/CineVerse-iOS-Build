@@ -32,16 +32,16 @@ public struct CastRailView: View {
         VStack(spacing: CVSpacing.xs) {
             CachedAsyncImage(
                 url: person.profileImageURL,
-                targetSize: CGSize(width: 170, height: 170),
+                targetSize: CGSize(width: 140, height: 140),
                 fallbackSymbol: "person.fill"
             )
-            .frame(width: 82, height: 82)
+            .frame(width: 62, height: 62)
             .clipShape(Circle())
             .overlay(
                 Circle()
                     .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.75)
             )
-            .shadow(color: Color.black.opacity(0.16), radius: 6, x: 0, y: 4)
+            .shadow(color: Color.black.opacity(0.14), radius: 5, x: 0, y: 3)
 
             VStack(spacing: 2) {
                 Text(person.name)
@@ -59,6 +59,6 @@ public struct CastRailView: View {
                 }
             }
         }
-        .frame(width: 96)
+        .frame(width: 76)
     }
 }

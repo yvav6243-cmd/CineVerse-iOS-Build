@@ -106,8 +106,14 @@ public struct PlayerSettingsSheet: View {
                             .foregroundStyle(CVColor.iris)
                     }
                 } footer: {
-                    Text("Real Decoded Output: \(session.engine.diagnostics.fullTechnicalSummary)")
-                        .font(CVFont.micro)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Real Decoded Output: \(session.engine.diagnostics.fullTechnicalSummary)")
+                        if let limitNote = session.sourceQualityLimitationNote {
+                            Text(limitNote)
+                                .foregroundStyle(CVColor.warning)
+                        }
+                    }
+                    .font(CVFont.micro)
                 }
 
                 Section("Audio Track & Voiceover") {

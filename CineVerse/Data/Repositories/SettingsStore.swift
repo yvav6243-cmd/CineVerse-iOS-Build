@@ -47,6 +47,19 @@ public final class SettingsStore {
     public var watchRegion: String {
         didSet { record.watchRegion = watchRegion; save() }
     }
+    public var audioLanguagePriority: [String] {
+        didSet { record.audioLanguagePriority = audioLanguagePriority; save() }
+    }
+    public var preferredGenres: [String] {
+        didSet { record.preferredGenres = preferredGenres; save() }
+    }
+    public var gestureSensitivity: Double {
+        didSet {
+            let clamped = min(max(gestureSensitivity, 0.5), 2.0)
+            record.gestureSensitivity = clamped
+            save()
+        }
+    }
 
     public init(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -65,6 +78,9 @@ public final class SettingsStore {
         self.homeSections = Self.normalizedHomeSections(loaded.homeSections)
         self.subtitleStyle = loaded.subtitleStyle
         self.watchRegion = loaded.watchRegion
+        self.audioLanguagePriority = loaded.audioLanguagePriority
+        self.preferredGenres = loaded.preferredGenres
+        self.gestureSensitivity = loaded.gestureSensitivity > 0 ? loaded.gestureSensitivity : 1.0
     }
 
     public func reloadFromDatabase() {
@@ -83,6 +99,9 @@ public final class SettingsStore {
         homeSections = loaded.homeSections
         subtitleStyle = loaded.subtitleStyle
         watchRegion = loaded.watchRegion
+        audioLanguagePriority = loaded.audioLanguagePriority
+        preferredGenres = loaded.preferredGenres
+        gestureSensitivity = loaded.gestureSensitivity > 0 ? loaded.gestureSensitivity : 1.0
     }
 
     public func resetHomeSections() {

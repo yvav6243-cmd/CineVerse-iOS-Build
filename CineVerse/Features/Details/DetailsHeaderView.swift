@@ -5,7 +5,7 @@ public struct DetailsHeaderView: View {
     let transitionID: String
     let transitionNamespace: Namespace.ID?
 
-    private let backdropHeight: CGFloat = 260
+    private let backdropHeight: CGFloat = 176
 
     public init(
         item: MediaItem,
@@ -26,7 +26,7 @@ public struct DetailsHeaderView: View {
                 titleAndMetadataColumn
             }
             .padding(.horizontal, CVSpacing.md)
-            .padding(.top, -76)
+            .padding(.top, -54)
 
             if !item.genres.isEmpty {
                 GenreWrapLayout(spacing: CVSpacing.xs, rowSpacing: CVSpacing.xs) {
@@ -75,16 +75,16 @@ public struct DetailsHeaderView: View {
     private var posterCard: some View {
         CachedAsyncImage(
             url: item.posterURL,
-            targetSize: CGSize(width: 240, height: 360),
+            targetSize: CGSize(width: 200, height: 300),
             fallbackSymbol: item.projectType.symbolName
         )
-        .frame(width: 118, height: 177)
+        .frame(width: 92, height: 138)
         .clipShape(RoundedRectangle(cornerRadius: CVRadius.poster, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: CVRadius.poster, style: .continuous)
                 .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.75)
         )
-        .shadow(color: Color.black.opacity(0.32), radius: 14, x: 0, y: 8)
+        .shadow(color: Color.black.opacity(0.24), radius: 10, x: 0, y: 5)
         .cvMatchedSource(id: transitionID, in: transitionNamespace)
     }
 

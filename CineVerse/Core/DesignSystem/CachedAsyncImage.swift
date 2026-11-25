@@ -24,25 +24,25 @@ public struct CachedAsyncImage: View {
     }
 
     public var body: some View {
-        ZStack {
-            Rectangle()
-                .fill(Color(.tertiarySystemFill))
-                .cvShimmer(isLoading)
-
-            if let loadedImage {
-                Image(uiImage: loadedImage)
-                    .resizable()
-                    .aspectRatio(contentMode: contentMode)
-                    .transition(.opacity.animation(.easeOut(duration: 0.2)))
-            } else if !isLoading {
-                Image(systemName: fallbackSymbol)
-                    .font(.title2)
-                    .foregroundStyle(.secondary)
+        Rectangle()
+            .fill(Color(.tertiarySystemFill))
+            .cvShimmer(isLoading)
+            .overlay {
+                if let loadedImage {
+                    Image(uiImage: loadedImage)
+                        .resizable()
+                        .aspectRatio(contentMode: contentMode)
+                        .transition(.opacity.animation(.easeOut(duration: 0.2)))
+                } else if !isLoading {
+                    Image(systemName: fallbackSymbol)
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                }
             }
-        }
-        .task(id: url) {
-            await load()
-        }
+            .clipped()
+            .task(id: url) {
+                await load()
+            }
     }
 
     private func load() async {

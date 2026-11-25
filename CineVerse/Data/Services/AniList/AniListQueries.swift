@@ -15,6 +15,7 @@ public enum AniListQueries {
       $formats: [MediaFormat],
       $status: MediaStatus,
       $averageScoreGreater: Int,
+      $averageScoreLesser: Int,
       $durationLesser: Int
     ) {
       Page(page: $page, perPage: $perPage) {
@@ -33,6 +34,7 @@ public enum AniListQueries {
           format_in: $formats,
           status: $status,
           averageScore_greater: $averageScoreGreater,
+          averageScore_lesser: $averageScoreLesser,
           duration_lesser: $durationLesser,
           isAdult: false
         ) {
@@ -43,6 +45,7 @@ public enum AniListQueries {
             english
             native
           }
+          synonyms
           description(asHtml: false)
           format
           status
@@ -63,6 +66,27 @@ public enum AniListQueries {
             color
           }
           bannerImage
+          studios(isMain: true) {
+            nodes {
+              name
+            }
+          }
+          staff(perPage: 4) {
+            edges {
+              role
+              node {
+                id
+                name { full }
+              }
+            }
+          }
+          characters(perPage: 6, sort: [ROLE]) {
+            edges {
+              role
+              node { name { full } }
+              voiceActors(language: JAPANESE) { name { full } }
+            }
+          }
           nextAiringEpisode {
             airingAt
             episode
@@ -245,6 +269,47 @@ public enum AniListQueries {
     public static let genres = """
     query GenreCollection {
       GenreCollection
+    }
+    """
+
+    public static let searchEntities = """
+    query SearchEntities($q: String!) {
+      studios: Page(page: 1, perPage: 2) {
+        studios(search: $q, sort: SEARCH_MATCH) {
+          name
+          media(sort: POPULARITY_DESC, perPage: 8, isMain: true) {
+            nodes {
+              id idMal format status episodes duration seasonYear countryOfOrigin genres averageScore popularity bannerImage isAdult
+              title { romaji english native }
+              coverImage { extraLarge color }
+            }
+          }
+        }
+      }
+      characters: Page(page: 1, perPage: 3) {
+        characters(search: $q, sort: SEARCH_MATCH) {
+          name { full }
+          media(type: ANIME, sort: POPULARITY_DESC, perPage: 6) {
+            nodes {
+              id idMal format status episodes duration seasonYear countryOfOrigin genres averageScore popularity bannerImage isAdult
+              title { romaji english native }
+              coverImage { extraLarge color }
+            }
+          }
+        }
+      }
+      staff: Page(page: 1, perPage: 2) {
+        staff(search: $q, sort: SEARCH_MATCH) {
+          name { full }
+          staffMedia(type: ANIME, sort: POPULARITY_DESC, perPage: 6) {
+            nodes {
+              id idMal format status episodes duration seasonYear countryOfOrigin genres averageScore popularity bannerImage isAdult
+              title { romaji english native }
+              coverImage { extraLarge color }
+            }
+          }
+        }
+      }
     }
     """
 }

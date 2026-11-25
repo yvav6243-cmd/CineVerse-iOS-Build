@@ -21,7 +21,7 @@ public final class PlayerSession {
            let saved = VideoPicturePreset(rawValue: raw) {
             return saved
         }
-        return .vividCinema
+        return .standard
     }() {
         didSet {
             UserDefaults.standard.set(picturePreset.rawValue, forKey: "cv_picture_preset")
@@ -29,6 +29,7 @@ public final class PlayerSession {
     }
 
     private var failedSourceIDs: Set<String> = []
+    private var hasStarted: Bool = false
 
     private let progressRepository: ProgressRepositoryProtocol
     private let libraryRepository: LibraryRepositoryProtocol
@@ -66,6 +67,8 @@ public final class PlayerSession {
     }
 
     public func start() {
+        guard !hasStarted else { return }
+        hasStarted = true
         loadSelection(selection)
         configureRemoteCommands()
         let currentItem = selection.mediaItem
@@ -84,6 +87,31 @@ public final class PlayerSession {
                 )
             }
         }
+    }
+
+    public func retry() {
+        failedSourceIDs.remove(selection.source.id)
+        loadSelection(selection)
+    }
+
+    public func handleDidEnterBackground() {
+        persistProgress(force: true)
+        if !pipController.isActive {
+            engine.pause()
+        }
+    }
+
+    public var sourceQualityLimitationNote: String? {
+        if engine.diagnostics.videoHeight > 0 && engine.diagnostics.videoHeight < 900 {
+            return "Source provides up to \(engine.diagnostics.resolutionBadge). Displayed natively without artificial upscaling."
+        }
+        let maxConcrete = selection.source.availableQualities
+            .filter { $0.tier != .auto }
+            .max { PlaybackQualityDiagnostics.rank(of: $0.tier) < PlaybackQualityDiagnostics.rank(of: $1.tier) }
+        if let maxConcrete, PlaybackQualityDiagnostics.rank(of: maxConcrete.tier) < PlaybackQualityDiagnostics.rank(of: .p1080) {
+            return "Maximum quality from this source is \(maxConcrete.tier.displayLabel)."
+        }
+        return nil
     }
 
     public func switchSource(to source: VideoSourceDescriptor) async {
@@ -130,7 +158,6 @@ public final class PlayerSession {
 
         persistProgress(force: true)
         loadSelection(updatedSelection)
-        engine.play()
     }
 
     public func selectQuality(_ quality: VideoQualityVariant) {

@@ -23,6 +23,8 @@ public protocol LibraryRepositoryProtocol: AnyObject {
         subtitleLang: String?,
         quality: VideoQualityTier?
     )
+    func savePreferredPlaybackRate(_ rate: Float, mediaID: String)
+    func incrementRewatchCount(mediaID: String)
     func favorites() -> [MediaItem]
     func deleteEntry(mediaID: String)
     func saveChanges()
@@ -63,12 +65,20 @@ public final class LibraryRepository: LibraryRepositoryProtocol {
             existing.totalEpisodes = max(item.totalEpisodes, 1)
             existing.totalSeasons = max(item.totalSeasons, 1)
             existing.episodeDurationMinutes = max(item.durationMinutes, existing.episodeDurationMinutes)
+            let genericDirectors: Set<String> = ["Unknown Director", "Series Creator", "Animation Studio", "Network Production"]
+            if !genericDirectors.contains(item.director) && !item.director.isEmpty {
+                existing.directorName = item.director
+            }
+            if !item.studio.isEmpty {
+                existing.studioName = item.studio
+            }
             existing.snapshot = item
             existing.updatedAt = Date()
             saveChanges()
             return existing
         }
 
+        let genericDirectors: Set<String> = ["Unknown Director", "Series Creator", "Animation Studio", "Network Production"]
         let created = LibraryEntryRecord(
             mediaID: item.id,
             title: item.localizedTitle,
@@ -81,6 +91,8 @@ public final class LibraryRepository: LibraryRepositoryProtocol {
             totalEpisodes: max(item.totalEpisodes, 1),
             totalSeasons: max(item.totalSeasons, 1),
             episodeDurationMinutes: max(item.durationMinutes, 24),
+            directorName: genericDirectors.contains(item.director) ? nil : item.director.nilIfEmpty,
+            studioName: item.studio.nilIfEmpty,
             snapshotData: try? JSONEncoder().encode(item)
         )
         modelContext.insert(created)
@@ -159,6 +171,21 @@ public final class LibraryRepository: LibraryRepositoryProtocol {
         record.preferredAudioLanguage = audioLang
         record.preferredSubtitleLanguage = subtitleLang
         record.preferredQuality = quality
+        record.updatedAt = Date()
+        saveChanges()
+    }
+
+    public func savePreferredPlaybackRate(_ rate: Float, mediaID: String) {
+        guard let record = entry(for: mediaID) else { return }
+        record.preferredPlaybackRate = rate
+        record.updatedAt = Date()
+        saveChanges()
+    }
+
+    public func incrementRewatchCount(mediaID: String) {
+        guard let record = entry(for: mediaID) else { return }
+        record.rewatchCount += 1
+        record.finishDate = Date()
         record.updatedAt = Date()
         saveChanges()
     }

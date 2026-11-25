@@ -17,7 +17,7 @@ public struct PlayerView: View {
     @State private var isFullscreen: Bool = false
     @State private var controlsVisible: Bool = true
     @State private var isLocked: Bool = false
-    @State private var isAspectFill: Bool = false
+    @State private var scalingMode: VideoScalingMode = .fit
     @State private var showSettingsSheet: Bool = false
     @State private var showSubtitleImporter: Bool = false
     @State private var showAddNextSourceSheet: Bool = false
@@ -54,44 +54,47 @@ public struct PlayerView: View {
     }
 
     public var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
+        GeometryReader { rootProxy in
+            ZStack {
+                Color.black.ignoresSafeArea()
 
-            if isFullscreen {
-                videoStageContainer
-                    .ignoresSafeArea()
-                    .transition(.opacity)
-            } else {
                 VStack(spacing: 0) {
-                    videoStageContainer
-                        .aspectRatio(16.0 / 9.0, contentMode: .fit)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.black)
+                    if isFullscreen {
+                        videoStageContainer
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        videoStageContainer
+                            .frame(maxWidth: .infinity)
+                            .frame(height: inlineStageHeight(for: rootProxy.size))
+                            .background(Color.black)
 
-                    PlayerInlineDeckView(
-                        session: session,
-                        onEnterFullscreen: { toggleFullscreen() },
-                        onOpenSettings: { showSettingsSheet = true }
-                    )
+                        PlayerInlineDeckView(
+                            session: session,
+                            scalingMode: scalingMode,
+                            onSelectScalingMode: { scalingMode = $0 },
+                            onEnterFullscreen: { toggleFullscreen() },
+                            onOpenSettings: { showSettingsSheet = true }
+                        )
+                    }
                 }
-            }
 
-            if session.showUpNextOverlay, let nextEp = session.nextEpisode {
-                UpNextOverlay(
-                    nextEpisode: nextEp,
-                    fallbackPosterURL: session.selection.mediaItem.backdropURL ?? session.selection.mediaItem.posterURL,
-                    hasPlayableSource: session.nextSelection != nil,
-                    countdownSeconds: session.upNextCountdown,
-                    autoplayEnabled: settingsStore.autoplayNext,
-                    onToggleAutoplay: { settingsStore.autoplayNext.toggle() },
-                    onPlayNext: { session.playNextNow() },
-                    onAddSource: {
-                        session.cancelUpNext()
-                        showAddNextSourceSheet = true
-                    },
-                    onDismiss: { session.cancelUpNext() }
-                )
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                if session.showUpNextOverlay, let nextEp = session.nextEpisode {
+                    UpNextOverlay(
+                        nextEpisode: nextEp,
+                        fallbackPosterURL: session.selection.mediaItem.backdropURL ?? session.selection.mediaItem.posterURL,
+                        hasPlayableSource: session.nextSelection != nil,
+                        countdownSeconds: session.upNextCountdown,
+                        autoplayEnabled: settingsStore.autoplayNext,
+                        onToggleAutoplay: { settingsStore.autoplayNext.toggle() },
+                        onPlayNext: { session.playNextNow() },
+                        onAddSource: {
+                            session.cancelUpNext()
+                            showAddNextSourceSheet = true
+                        },
+                        onDismiss: { session.cancelUpNext() }
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
         }
         .animation(CVMotion.spring, value: isFullscreen)
@@ -109,8 +112,18 @@ public struct PlayerView: View {
             OrientationController.shared.setAllowedOrientations(.portrait, requestOrientation: .portrait)
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background || phase == .inactive {
+            if phase == .background {
+                session.handleDidEnterBackground()
+            } else if phase == .inactive {
                 session.persistProgress()
+            }
+        }
+        .onChange(of: session.engine.isPlaying) { _, playing in
+            if playing {
+                scheduleAutoHide()
+            } else {
+                hideControlsTask?.cancel()
+                controlsVisible = true
             }
         }
         .sheet(isPresented: $showSettingsSheet) {
@@ -129,15 +142,19 @@ public struct PlayerView: View {
         }
     }
 
+    private func inlineStageHeight(for size: CGSize) -> CGFloat {
+        let ratioHeight = size.width * 9.0 / 16.0
+        let maxInlineHeight = max(size.height * 0.42, 200)
+        return min(max(ratioHeight, 190), maxInlineHeight)
+    }
+
     private var videoStageContainer: some View {
         GeometryReader { proxy in
             ZStack {
-                Color.black
+                Color.black.ignoresSafeArea()
 
-                activeVideoSurface
-                    .contrast(session.picturePreset.contrast)
-                    .saturation(session.picturePreset.saturation)
-                    .brightness(session.picturePreset.brightness)
+                filteredVideoSurface
+                    .ignoresSafeArea(edges: isFullscreen ? .all : [])
 
                 gestureSurface(size: proxy.size)
 
@@ -153,9 +170,10 @@ public struct PlayerView: View {
                     Text(skipIndicatorText)
                         .font(CVFont.cardTitle)
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 9)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
                         .cvGlass(Capsule(style: .continuous))
+                        .allowsHitTesting(false)
                         .transition(.scale.combined(with: .opacity))
                 }
 
@@ -165,12 +183,22 @@ public struct PlayerView: View {
 
                 if controlsVisible {
                     PlayerControlsOverlay(
-                        session: session, isFullscreen: isFullscreen, isLocked: isLocked, isAspectFill: isAspectFill,
+                        session: session,
+                        isFullscreen: isFullscreen,
+                        isLocked: isLocked,
+                        scalingMode: scalingMode,
                         onSkipIntro: activeSkipIntroAction,
                         onClose: { isFullscreen ? toggleFullscreen() : { session.endSession(); dismiss() }() },
                         onToggleFullscreen: { toggleFullscreen() },
-                        onToggleLock: { isLocked.toggle(); controlsVisible = true; scheduleAutoHide() },
-                        onToggleAspectFill: { isAspectFill.toggle(); scheduleAutoHide() },
+                        onToggleLock: {
+                            isLocked.toggle()
+                            controlsVisible = true
+                            scheduleAutoHide()
+                        },
+                        onSelectScalingMode: { mode in
+                            scalingMode = mode
+                            scheduleAutoHide()
+                        },
                         onOpenSettings: { showSettingsSheet = true },
                         onImportSubtitle: { showSubtitleImporter = true },
                         onUserInteraction: { scheduleAutoHide() }
@@ -183,21 +211,33 @@ public struct PlayerView: View {
     }
 
     @ViewBuilder
+    private var filteredVideoSurface: some View {
+        if session.picturePreset == .standard {
+            activeVideoSurface
+        } else {
+            activeVideoSurface
+                .contrast(session.picturePreset.contrast)
+                .saturation(session.picturePreset.saturation)
+                .brightness(session.picturePreset.brightness)
+        }
+    }
+
+    @ViewBuilder
     private var activeVideoSurface: some View {
         if session.engine.usesWebSurface,
            let streamURL = session.engine.activeStreamURL ?? session.selection.source.playbackURL {
             WebMediaPlayerSurface(
                 controller: session.engine.webBridge,
                 streamURL: streamURL,
-                startTime: session.engine.currentTime,
                 rate: session.engine.playbackRate,
                 volume: session.engine.volume,
-                isAspectFill: isAspectFill
+                scalingMode: scalingMode
             )
         } else {
             PlayerLayerView(
                 player: session.engine.player,
-                videoGravity: isAspectFill ? .resizeAspectFill : .resizeAspect
+                scalingMode: scalingMode,
+                presentationSize: session.engine.presentationSize
             ) { playerLayer in
                 session.pipController.attach(to: playerLayer)
             }
@@ -211,8 +251,8 @@ public struct PlayerView: View {
                 Label("2.0x Speed", systemImage: "forward.fill")
                     .font(CVFont.caption.weight(.bold))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 7)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
                     .cvGlass(Capsule(style: .continuous))
                     .padding(.top, CVSpacing.sm)
             } else if let hud = gestureHUD {
@@ -227,8 +267,8 @@ public struct PlayerView: View {
                         .tint(CVColor.iris)
                         .frame(width: 72)
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
                 .cvGlass(Capsule(style: .continuous))
                 .padding(.top, CVSpacing.sm)
             }
@@ -256,8 +296,8 @@ public struct PlayerView: View {
         let nextFullscreen = !isFullscreen
         withAnimation(CVMotion.spring) {
             isFullscreen = nextFullscreen
-            if !nextFullscreen {
-                isAspectFill = false
+            if !nextFullscreen && scalingMode == .fill {
+                scalingMode = .fit
             }
             controlsVisible = true
         }
@@ -308,7 +348,7 @@ public struct PlayerView: View {
                 withAnimation(CVMotion.snappy) { isHoldBoostingSpeed = true }
             })
             .gesture(
-                DragGesture(minimumDistance: 22, coordinateSpace: .local)
+                DragGesture(minimumDistance: 24, coordinateSpace: .local)
                     .onChanged { value in
                         handleDragChanged(value, in: size)
                     }
@@ -327,8 +367,7 @@ public struct PlayerView: View {
                 activeDragMode = .horizontalSeek(initialTime: session.engine.currentTime)
                 session.engine.isSeeking = true
             } else if value.startLocation.x < size.width * 0.5 {
-                let currentB = currentScreenBrightness
-                activeDragMode = .brightness(initial: currentB)
+                activeDragMode = .brightness(initial: currentScreenBrightness)
             } else {
                 activeDragMode = .volume(initial: session.engine.volume)
             }
@@ -394,7 +433,7 @@ public struct PlayerView: View {
     private func errorOverlay(_ message: String) -> some View {
         VStack(spacing: CVSpacing.sm) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.largeTitle)
+                .font(.title)
                 .foregroundStyle(CVColor.warning)
             Text("Playback Error")
                 .font(CVFont.sectionTitle)
@@ -403,9 +442,9 @@ public struct PlayerView: View {
                 .font(CVFont.caption)
                 .foregroundStyle(.white.opacity(0.8))
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 300)
+                .frame(maxWidth: 280)
             HStack(spacing: CVSpacing.sm) {
-                Button("Retry") { session.start() }
+                Button("Retry") { session.retry() }
                     .buttonStyle(CVPrimaryButtonStyle(compact: true))
                 Button("Close") {
                     session.endSession()
@@ -428,11 +467,11 @@ public struct PlayerView: View {
 
     private func scheduleAutoHide() {
         hideControlsTask?.cancel()
-        guard session.engine.isPlaying || !isLocked else { return }
+        guard session.engine.isPlaying && !isLocked else { return }
         hideControlsTask = Task {
             try? await Task.sleep(for: .seconds(3.5))
             guard !Task.isCancelled else { return }
-            if session.engine.isPlaying && !isLocked {
+            if session.engine.isPlaying && !isLocked && !session.engine.isSeeking {
                 withAnimation(CVMotion.gentle) { controlsVisible = false }
             }
         }

@@ -6,6 +6,7 @@ public struct SearchResultsView: View {
     let onSelectMedia: (MediaItem) -> Void
 
     @State private var containerWidth: CGFloat = 0
+    @State private var showAdvancedFilters: Bool = false
 
     public init(
         viewModel: SearchViewModel,
@@ -29,6 +30,15 @@ public struct SearchResultsView: View {
             proxy.size.width
         } action: { newWidth in
             containerWidth = newWidth
+        }
+        .sheet(isPresented: $showAdvancedFilters) {
+            FilterSheetView(
+                initialCriteria: viewModel.filterCriteria,
+                catalogRepository: viewModel.catalogRepository,
+                settingsStore: viewModel.settingsStore
+            ) { updated in
+                Task { await viewModel.applyFilterCriteria(updated) }
+            }
         }
     }
 
@@ -57,25 +67,43 @@ public struct SearchResultsView: View {
                 .padding(.horizontal, CVSpacing.md)
             }
 
-            HStack(spacing: CVSpacing.sm) {
-                FilterChip(
-                    title: "Original Title Only",
-                    symbolName: "character.book.closed",
-                    isSelected: viewModel.searchByOriginalTitleOnly
-                ) {
-                    Task { await viewModel.toggleOriginalTitleOnly() }
-                }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: CVSpacing.xs) {
+                    FilterChip(
+                        title: "Available to Watch",
+                        symbolName: "checkmark.seal.fill",
+                        isSelected: viewModel.onlyAvailableToWatch
+                    ) {
+                        Task { await viewModel.toggleAvailableToWatchOnly() }
+                    }
 
-                Spacer()
+                    FilterChip(
+                        title: "Original / Alt Title",
+                        symbolName: "character.book.closed",
+                        isSelected: viewModel.searchByOriginalTitleOnly
+                    ) {
+                        Task { await viewModel.toggleOriginalTitleOnly() }
+                    }
 
-                if case .loaded(let items) = viewModel.state {
-                    Text("\(items.count) \(items.count == 1 ? "result" : "results")")
-                        .font(CVFont.caption)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
+                    let extraCount = viewModel.filterCriteria.activeFilterCount
+                    FilterChip(
+                        title: extraCount > 0 ? "Filters (\(extraCount))" : "Advanced Filters",
+                        symbolName: "slider.horizontal.3",
+                        isSelected: extraCount > 0
+                    ) {
+                        showAdvancedFilters = true
+                    }
+
+                    if case .loaded(let items) = viewModel.state {
+                        Text("\(items.count) \(items.count == 1 ? "result" : "results")")
+                            .font(CVFont.caption)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .padding(.leading, 4)
+                    }
                 }
+                .padding(.horizontal, CVSpacing.md)
             }
-            .padding(.horizontal, CVSpacing.md)
         }
         .padding(.top, CVSpacing.xs)
     }
@@ -92,7 +120,7 @@ public struct SearchResultsView: View {
             .padding(.top, CVSpacing.xl)
         case .loaded(let items):
             if items.isEmpty {
-                let hasFilters = viewModel.selectedCategory != nil || viewModel.searchByOriginalTitleOnly
+                let hasFilters = viewModel.filterCriteria.activeFilterCount > 0
                 EmptyStateView(
                     title: "No Matching Titles",
                     message: hasFilters

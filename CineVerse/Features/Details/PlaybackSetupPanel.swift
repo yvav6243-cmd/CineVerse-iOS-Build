@@ -389,7 +389,7 @@ public struct PlaybackSetupPanel: View {
             }
 
             if !viewModel.officialSources.isEmpty {
-                Text("Watch Legally on Official Platforms")
+                Text("External Official Platforms (Opens Web Page)")
                     .font(CVFont.micro.weight(.bold))
                     .foregroundStyle(.secondary)
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -398,7 +398,7 @@ public struct PlaybackSetupPanel: View {
                             if let url = official.officialServiceURL {
                                 Button { Haptics.selection(); onOpenOfficialURL(url) } label: {
                                     Label(official.providerName, systemImage: "arrow.up.right.square")
-                                }.buttonStyle(CVPrimaryButtonStyle(compact: true))
+                                }.buttonStyle(CVGlassButtonStyle(compact: true))
                             }
                         }
                     }

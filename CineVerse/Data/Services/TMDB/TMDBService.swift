@@ -10,6 +10,7 @@ public struct TMDBDiscoverParameters: Sendable {
     public var originCountry: String?
     public var originalLanguage: String?
     public var minRating: Double?
+    public var maxRating: Double?
     public var maxDurationMinutes: Int?
     public var tvStatusCode: String?
     public var tvTypeCode: String?
@@ -170,7 +171,7 @@ public final class TMDBService: TMDBServiceProtocol, @unchecked Sendable {
             URLQueryItem(name: "include_adult", value: "false")
         ])
         let res = try await httpClient.send(ep, as: TMDBPagedResponse<TMDBMultiSearchDTO>.self)
-        let items = res.results.compactMap(TMDBMapper.mapMultiSearch)
+        let items = res.results.flatMap(TMDBMapper.mapMultiSearchItems)
         let hasMore = res.page < (res.totalPages ?? res.page)
         return (items, hasMore)
     }
@@ -247,6 +248,9 @@ public final class TMDBService: TMDBServiceProtocol, @unchecked Sendable {
         }
         if let minRating = params.minRating, minRating > 0 {
             items.append(URLQueryItem(name: "vote_average.gte", value: String(format: "%.1f", minRating)))
+        }
+        if let maxRating = params.maxRating, maxRating < 10.0 {
+            items.append(URLQueryItem(name: "vote_average.lte", value: String(format: "%.1f", maxRating)))
         }
         if params.sortBy.hasPrefix("vote_average") {
             items.append(URLQueryItem(name: "vote_count.gte", value: "50"))

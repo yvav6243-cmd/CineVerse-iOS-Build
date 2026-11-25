@@ -179,10 +179,10 @@ public struct MediaDetailsView: View {
                 VStack(alignment: .leading, spacing: CVSpacing.lg) {
                     DetailsHeaderView(item: item, transitionID: "\(item.id):header", transitionNamespace: transitionNamespace)
                     actionBar(for: item, scrollProxy: scrollProxy)
+                    setupPanel(for: item)
                     RatingComparisonView(ratings: item.ratings, personalRating: viewModel.libraryEntry?.personalRating) {
                         viewModel.setPersonalRating($0)
                     }
-                    setupPanel(for: item)
                     synopsisSection(item: item)
                     TrailerCard(trailerURL: item.trailerURL, backdropURL: item.backdropURL ?? item.posterURL, title: item.localizedTitle, pendingExternalURL: trailerURLBinding(for: item))
                     episodesBlock(for: item, scrollProxy: scrollProxy)

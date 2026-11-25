@@ -6,18 +6,35 @@ public final class WebMediaBridgeController: NSObject, WKScriptMessageHandler {
     public weak var webView: WKWebView?
     public var onReady: ((Double, Int, Int) -> Void)?
     public var onTimeUpdate: ((Double, Double, Bool) -> Void)?
+    public var onBufferingChanged: ((Bool) -> Void)?
+    public var onPlayStateChanged: ((Bool) -> Void)?
     public var onEnded: (() -> Void)?
     public var onError: ((String) -> Void)?
 
     public private(set) var currentLoadedURL: URL?
+    public private(set) var desiredPlaying: Bool = false
+    private var currentScalingMode: VideoScalingMode = .fit
+    private var pendingStartTime: Double = 0
 
-    public func loadStream(url: URL, startTime: Double, rate: Float, volume: Float, aspectFill: Bool) {
-        guard let webView else { return }
+    public func loadStream(
+        url: URL,
+        startTime: Double,
+        rate: Float,
+        volume: Float,
+        scalingMode: VideoScalingMode = .fit,
+        autoPlay: Bool = true
+    ) {
         currentLoadedURL = url
+        pendingStartTime = max(0, startTime)
+        currentScalingMode = scalingMode
+        desiredPlaying = autoPlay
+
+        guard let webView else { return }
         let escapedURL = url.absoluteString
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
-        let fitMode = aspectFill ? "cover" : "contain"
+        let cssRule = Self.cssRule(for: scalingMode)
+        let desiredLiteral = autoPlay ? "true" : "false"
 
         let html = """
         <!DOCTYPE html>
@@ -25,15 +42,16 @@ public final class WebMediaBridgeController: NSObject, WKScriptMessageHandler {
         <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <style>
-        html, body { margin:0; padding:0; width:100%; height:100%; background:#000; overflow:hidden; -webkit-user-select:none; }
-        video { width:100%; height:100%; object-fit:\(fitMode); background:#000; pointer-events:none; }
+        html, body { margin:0; padding:0; width:100%; height:100%; background:#000; overflow:hidden; -webkit-user-select:none; display:flex; align-items:center; justify-content:center; }
+        video { \(cssRule) background:#000; pointer-events:none; }
         </style>
         </head>
         <body>
-        <video id="cvv" playsinline webkit-playsinline preload="auto" autoplay src="\(escapedURL)"></video>
+        <video id="cvv" playsinline webkit-playsinline preload="auto" src="\(escapedURL)"></video>
         <script>
         (function() {
             const v = document.getElementById('cvv');
+            window.__cvDesiredPlaying = \(desiredLiteral);
             v.volume = \(max(0, min(1, volume)));
             v.playbackRate = \(rate);
             const post = (payload) => {
@@ -42,11 +60,15 @@ public final class WebMediaBridgeController: NSObject, WKScriptMessageHandler {
                 }
             };
             v.addEventListener('loadedmetadata', () => {
-                if (\(startTime) > 1 && isFinite(v.duration) && \(startTime) < v.duration) {
-                    v.currentTime = \(startTime);
+                if (\(pendingStartTime) > 1 && isFinite(v.duration) && \(pendingStartTime) < v.duration) {
+                    v.currentTime = \(pendingStartTime);
                 }
                 post({ type: 'ready', duration: v.duration || 0, width: v.videoWidth || 0, height: v.videoHeight || 0 });
-                v.play().catch(() => {});
+                if (window.__cvDesiredPlaying) {
+                    v.play().catch(() => {});
+                } else {
+                    v.pause();
+                }
             });
             v.addEventListener('timeupdate', () => {
                 let buf = 0;
@@ -55,8 +77,17 @@ public final class WebMediaBridgeController: NSObject, WKScriptMessageHandler {
                 }
                 post({ type: 'time', current: v.currentTime || 0, buffered: buf, paused: v.paused, width: v.videoWidth || 0, height: v.videoHeight || 0 });
             });
+            v.addEventListener('play', () => {
+                if (!window.__cvDesiredPlaying) {
+                    v.pause();
+                    return;
+                }
+                post({ type: 'state', paused: false });
+            });
+            v.addEventListener('pause', () => post({ type: 'state', paused: true }));
             v.addEventListener('waiting', () => post({ type: 'buffering', active: true }));
             v.addEventListener('playing', () => post({ type: 'buffering', active: false }));
+            v.addEventListener('canplay', () => post({ type: 'buffering', active: false }));
             v.addEventListener('ended', () => post({ type: 'ended' }));
             v.addEventListener('error', () => post({ type: 'error', message: 'Unable to decode WebM/DASH stream.' }));
         })();
@@ -67,16 +98,26 @@ public final class WebMediaBridgeController: NSObject, WKScriptMessageHandler {
         webView.loadHTMLString(html, baseURL: URL(string: "https://commons.wikimedia.org"))
     }
 
+    public func setDesiredPlaying(_ playing: Bool) {
+        desiredPlaying = playing
+        let literal = playing ? "true" : "false"
+        webView?.evaluateJavaScript("window.__cvDesiredPlaying=\(literal);", completionHandler: nil)
+    }
+
     public func play() {
-        webView?.evaluateJavaScript("document.getElementById('cvv')?.play();", completionHandler: nil)
+        setDesiredPlaying(true)
+        webView?.evaluateJavaScript("var v=document.getElementById('cvv'); if(v){v.play().catch(()=>{});}", completionHandler: nil)
     }
 
     public func pause() {
-        webView?.evaluateJavaScript("document.getElementById('cvv')?.pause();", completionHandler: nil)
+        setDesiredPlaying(false)
+        webView?.evaluateJavaScript("var v=document.getElementById('cvv'); if(v){v.pause();}", completionHandler: nil)
     }
 
     public func seek(to seconds: Double) {
-        webView?.evaluateJavaScript("var v=document.getElementById('cvv'); if(v){v.currentTime=\(max(0, seconds));}", completionHandler: nil)
+        let clamped = max(0, seconds)
+        pendingStartTime = clamped
+        webView?.evaluateJavaScript("var v=document.getElementById('cvv'); if(v){v.currentTime=\(clamped);}", completionHandler: nil)
     }
 
     public func setRate(_ rate: Float) {
@@ -88,13 +129,39 @@ public final class WebMediaBridgeController: NSObject, WKScriptMessageHandler {
         webView?.evaluateJavaScript("var v=document.getElementById('cvv'); if(v){v.volume=\(clamped);}", completionHandler: nil)
     }
 
-    public func setAspectFill(_ fill: Bool) {
-        let mode = fill ? "cover" : "contain"
-        webView?.evaluateJavaScript("var v=document.getElementById('cvv'); if(v){v.style.objectFit='\(mode)';}", completionHandler: nil)
+    public func setScalingMode(_ mode: VideoScalingMode) {
+        guard currentScalingMode != mode else { return }
+        currentScalingMode = mode
+        let cssJS = Self.cssMutationJS(for: mode)
+        webView?.evaluateJavaScript("var v=document.getElementById('cvv'); if(v){\(cssJS)}", completionHandler: nil)
     }
 
     public func teardown() {
-        webView?.evaluateJavaScript("var v=document.getElementById('cvv'); if(v){v.pause(); v.removeAttribute('src'); v.load();}", completionHandler: nil)
+        desiredPlaying = false
+        currentLoadedURL = nil
+        webView?.evaluateJavaScript("window.__cvDesiredPlaying=false; var v=document.getElementById('cvv'); if(v){v.pause(); v.removeAttribute('src'); v.load();}", completionHandler: nil)
+    }
+
+    private static func cssRule(for mode: VideoScalingMode) -> String {
+        switch mode {
+        case .fit:
+            return "width:100%; height:100%; object-fit:contain;"
+        case .fill:
+            return "width:100%; height:100%; object-fit:cover;"
+        case .original:
+            return "width:auto; height:auto; max-width:100%; max-height:100%; object-fit:none;"
+        }
+    }
+
+    private static func cssMutationJS(for mode: VideoScalingMode) -> String {
+        switch mode {
+        case .fit:
+            return "v.style.width='100%'; v.style.height='100%'; v.style.maxWidth=''; v.style.maxHeight=''; v.style.objectFit='contain';"
+        case .fill:
+            return "v.style.width='100%'; v.style.height='100%'; v.style.maxWidth=''; v.style.maxHeight=''; v.style.objectFit='cover';"
+        case .original:
+            return "v.style.width='auto'; v.style.height='auto'; v.style.maxWidth='100%'; v.style.maxHeight='100%'; v.style.objectFit='none';"
+        }
     }
 
     public nonisolated func userContentController(
@@ -107,6 +174,7 @@ public final class WebMediaBridgeController: NSObject, WKScriptMessageHandler {
         let current = dict["current"] as? Double ?? 0
         let buffered = dict["buffered"] as? Double ?? 0
         let paused = dict["paused"] as? Bool ?? false
+        let active = dict["active"] as? Bool ?? false
         let width = dict["width"] as? Int ?? 0
         let height = dict["height"] as? Int ?? 0
         let errMessage = dict["message"] as? String ?? "Stream error"
@@ -121,6 +189,10 @@ public final class WebMediaBridgeController: NSObject, WKScriptMessageHandler {
                 if width > 0 && height > 0 {
                     self.onReady?(duration, width, height)
                 }
+            case "buffering":
+                self.onBufferingChanged?(active)
+            case "state":
+                self.onPlayStateChanged?(!paused)
             case "ended":
                 self.onEnded?()
             case "error":
@@ -135,10 +207,9 @@ public final class WebMediaBridgeController: NSObject, WKScriptMessageHandler {
 public struct WebMediaPlayerSurface: UIViewRepresentable {
     let controller: WebMediaBridgeController
     let streamURL: URL
-    let startTime: Double
     let rate: Float
     let volume: Float
-    let isAspectFill: Bool
+    let scalingMode: VideoScalingMode
 
     public func makeUIView(context: Context) -> WKWebView {
         let contentController = WKUserContentController()
@@ -156,15 +227,29 @@ public struct WebMediaPlayerSurface: UIViewRepresentable {
         webView.scrollView.isScrollEnabled = false
         webView.isUserInteractionEnabled = false
         controller.webView = webView
-        controller.loadStream(url: streamURL, startTime: startTime, rate: rate, volume: volume, aspectFill: isAspectFill)
+        controller.loadStream(
+            url: streamURL,
+            startTime: 0,
+            rate: rate,
+            volume: volume,
+            scalingMode: scalingMode,
+            autoPlay: controller.desiredPlaying
+        )
         return webView
     }
 
     public func updateUIView(_ webView: WKWebView, context: Context) {
         if controller.currentLoadedURL != streamURL {
-            controller.loadStream(url: streamURL, startTime: startTime, rate: rate, volume: volume, aspectFill: isAspectFill)
+            controller.loadStream(
+                url: streamURL,
+                startTime: 0,
+                rate: rate,
+                volume: volume,
+                scalingMode: scalingMode,
+                autoPlay: controller.desiredPlaying
+            )
         } else {
-            controller.setAspectFill(isAspectFill)
+            controller.setScalingMode(scalingMode)
         }
     }
 

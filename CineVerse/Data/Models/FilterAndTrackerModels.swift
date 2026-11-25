@@ -146,11 +146,17 @@ public struct CatalogFilterCriteria: Codable, Hashable, Sendable {
     public var country: String?
     public var language: String?
     public var minimumRating: Double
+    public var maximumRating: Double
     public var releaseStatus: MediaReleaseStatus?
     public var maxDurationMinutes: Int?
     public var minSeasonsCount: Int?
     public var sortBy: CatalogSortOption
     public var searchByOriginalTitleOnly: Bool
+    public var onlyAvailableToWatch: Bool
+    public var requiredAudioLanguage: String?
+    public var requiredVoiceoverKind: AudioVoiceoverKind?
+    public var minimumVideoQuality: VideoQualityTier?
+    public var personOrStudioQuery: String?
 
     public init(
         selectedCategory: MediaProjectType? = nil,
@@ -160,11 +166,17 @@ public struct CatalogFilterCriteria: Codable, Hashable, Sendable {
         country: String? = nil,
         language: String? = nil,
         minimumRating: Double = 0.0,
+        maximumRating: Double = 10.0,
         releaseStatus: MediaReleaseStatus? = nil,
         maxDurationMinutes: Int? = nil,
         minSeasonsCount: Int? = nil,
         sortBy: CatalogSortOption = .popularity,
-        searchByOriginalTitleOnly: Bool = false
+        searchByOriginalTitleOnly: Bool = false,
+        onlyAvailableToWatch: Bool = false,
+        requiredAudioLanguage: String? = nil,
+        requiredVoiceoverKind: AudioVoiceoverKind? = nil,
+        minimumVideoQuality: VideoQualityTier? = nil,
+        personOrStudioQuery: String? = nil
     ) {
         self.selectedCategory = selectedCategory
         self.selectedGenres = selectedGenres
@@ -173,11 +185,17 @@ public struct CatalogFilterCriteria: Codable, Hashable, Sendable {
         self.country = country
         self.language = language
         self.minimumRating = minimumRating
+        self.maximumRating = maximumRating
         self.releaseStatus = releaseStatus
         self.maxDurationMinutes = maxDurationMinutes
         self.minSeasonsCount = minSeasonsCount
         self.sortBy = sortBy
         self.searchByOriginalTitleOnly = searchByOriginalTitleOnly
+        self.onlyAvailableToWatch = onlyAvailableToWatch
+        self.requiredAudioLanguage = requiredAudioLanguage
+        self.requiredVoiceoverKind = requiredVoiceoverKind
+        self.minimumVideoQuality = minimumVideoQuality
+        self.personOrStudioQuery = personOrStudioQuery
     }
 
     public var activeFilterCount: Int {
@@ -187,11 +205,16 @@ public struct CatalogFilterCriteria: Codable, Hashable, Sendable {
         if yearFrom != nil || yearTo != nil { count += 1 }
         if country != nil { count += 1 }
         if language != nil { count += 1 }
-        if minimumRating > 0 { count += 1 }
+        if minimumRating > 0 || maximumRating < 10.0 { count += 1 }
         if releaseStatus != nil { count += 1 }
         if maxDurationMinutes != nil { count += 1 }
         if minSeasonsCount != nil { count += 1 }
         if searchByOriginalTitleOnly { count += 1 }
+        if onlyAvailableToWatch { count += 1 }
+        if requiredAudioLanguage != nil { count += 1 }
+        if requiredVoiceoverKind != nil { count += 1 }
+        if minimumVideoQuality != nil { count += 1 }
+        if let pq = personOrStudioQuery, !pq.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { count += 1 }
         return count
     }
 
@@ -203,11 +226,17 @@ public struct CatalogFilterCriteria: Codable, Hashable, Sendable {
         country = nil
         language = nil
         minimumRating = 0.0
+        maximumRating = 10.0
         releaseStatus = nil
         maxDurationMinutes = nil
         minSeasonsCount = nil
         sortBy = .popularity
         searchByOriginalTitleOnly = false
+        onlyAvailableToWatch = false
+        requiredAudioLanguage = nil
+        requiredVoiceoverKind = nil
+        minimumVideoQuality = nil
+        personOrStudioQuery = nil
     }
 }
 

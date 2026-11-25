@@ -154,10 +154,10 @@ public struct EpisodesSection: View {
                 ZStack(alignment: .bottom) {
                     CachedAsyncImage(
                         url: episode.stillImageURL ?? item.backdropURL ?? item.posterURL,
-                        targetSize: CGSize(width: 240, height: 135),
+                        targetSize: CGSize(width: 210, height: 118),
                         fallbackSymbol: "tv"
                     )
-                    .frame(width: 112, height: 64)
+                    .frame(width: 96, height: 54)
                     .clipShape(RoundedRectangle(cornerRadius: CVRadius.chip, style: .continuous))
 
                     if fraction > 0.01 && !isWatched {
@@ -166,7 +166,7 @@ public struct EpisodesSection: View {
                             .padding(.bottom, 4)
                     }
                 }
-                .frame(width: 112, height: 64)
+                .frame(width: 96, height: 54)
 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {

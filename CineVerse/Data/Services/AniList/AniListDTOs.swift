@@ -167,3 +167,34 @@ public struct AniListMediaDTO: Decodable, Sendable {
     public let streamingEpisodes: [AniListStreamingEpisodeDTO]?
     public let externalLinks: [AniListExternalLinkDTO]?
 }
+
+public struct AniListEntitySearchDataDTO: Decodable, Sendable {
+    public let studios: AniListEntityPageDTO?
+    public let characters: AniListEntityPageDTO?
+    public let staff: AniListEntityPageDTO?
+}
+
+public struct AniListEntityPageDTO: Decodable, Sendable {
+    public let studios: [AniListStudioEntityDTO]?
+    public let characters: [AniListCharacterEntityDTO]?
+    public let staff: [AniListStaffEntityDTO]?
+}
+
+public struct AniListStudioEntityDTO: Decodable, Sendable {
+    public let name: String?
+    public let media: AniListMediaNodesContainerDTO?
+}
+
+public struct AniListCharacterEntityDTO: Decodable, Sendable {
+    public let name: AniListPersonNameDTO?
+    public let media: AniListMediaNodesContainerDTO?
+}
+
+public struct AniListStaffEntityDTO: Decodable, Sendable {
+    public let name: AniListPersonNameDTO?
+    public let staffMedia: AniListMediaNodesContainerDTO?
+}
+
+public struct AniListMediaNodesContainerDTO: Decodable, Sendable {
+    public let nodes: [AniListMediaDTO]?
+}

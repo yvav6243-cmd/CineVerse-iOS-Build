@@ -107,6 +107,46 @@ public struct TMDBMultiSearchDTO: Decodable, Sendable {
     public let voteCount: Int?
     public let popularity: Double?
     public let originalLanguage: String?
+    public let knownForDepartment: String?
+    public let knownFor: [TMDBMultiKnownForDTO]?
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, name, overview, popularity
+        case mediaType = "media_type"
+        case originalTitle = "original_title"
+        case originalName = "original_name"
+        case posterPath = "poster_path"
+        case backdropPath = "backdrop_path"
+        case releaseDate = "release_date"
+        case firstAirDate = "first_air_date"
+        case genreIds = "genre_ids"
+        case originCountry = "origin_country"
+        case voteAverage = "vote_average"
+        case voteCount = "vote_count"
+        case originalLanguage = "original_language"
+        case knownForDepartment = "known_for_department"
+        case knownFor = "known_for"
+    }
+}
+
+public struct TMDBMultiKnownForDTO: Decodable, Sendable {
+    public let id: Int
+    public let mediaType: String?
+    public let title: String?
+    public let name: String?
+    public let originalTitle: String?
+    public let originalName: String?
+    public let overview: String?
+    public let posterPath: String?
+    public let backdropPath: String?
+    public let releaseDate: String?
+    public let firstAirDate: String?
+    public let genreIds: [Int]?
+    public let originCountry: [String]?
+    public let voteAverage: Double?
+    public let voteCount: Int?
+    public let popularity: Double?
+    public let originalLanguage: String?
 
     enum CodingKeys: String, CodingKey {
         case id, title, name, overview, popularity
@@ -123,6 +163,11 @@ public struct TMDBMultiSearchDTO: Decodable, Sendable {
         case voteCount = "vote_count"
         case originalLanguage = "original_language"
     }
+}
+
+public struct TMDBCompanyDTO: Decodable, Sendable {
+    public let id: Int
+    public let name: String
 }
 
 public struct TMDBCreditsDTO: Decodable, Sendable {
@@ -307,6 +352,7 @@ public struct TMDBMovieDetailsDTO: Decodable, Sendable {
     public let originalLanguage: String?
     public let originCountry: [String]?
     public let productionCountries: [TMDBCountryDTO]?
+    public let productionCompanies: [TMDBCompanyDTO]?
     public let status: String?
     public let credits: TMDBCreditsDTO?
     public let videos: TMDBVideoListDTO?
@@ -327,6 +373,7 @@ public struct TMDBMovieDetailsDTO: Decodable, Sendable {
         case originalLanguage = "original_language"
         case originCountry = "origin_country"
         case productionCountries = "production_countries"
+        case productionCompanies = "production_companies"
         case releaseDates = "release_dates"
         case watchProviders = "watch/providers"
         case externalIds = "external_ids"

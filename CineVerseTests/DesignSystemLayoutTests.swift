@@ -45,16 +45,15 @@ struct DesignSystemLayoutTests {
         }
     }
 
-    @Test func gridMetricsYieldTwoColumnsOnCompactIPhoneWidths() {
-        for width: CGFloat in [320, 360, 375, 390, 393, 430] {
+    @Test func gridMetricsYieldCompactErgonomicColumnsAcrossIPhoneWidths() {
+        #expect(CVGridLayoutMetrics.columnCount(for: 320) == 2)
+        for width: CGFloat in [360, 375, 390, 393, 430] {
             let cols = CVGridLayoutMetrics.columnCount(for: width)
             let cardW = CVGridLayoutMetrics.cardWidth(for: width)
-            #expect(cols == 2)
-            #expect(cardW >= 130 && cardW <= 210)
+            #expect(cols == 3)
+            #expect(cardW >= 96 && cardW <= 160)
             let totalNeeded = cardW * CGFloat(cols) + CVSpacing.sm * CGFloat(cols - 1) + CVSpacing.md * 2
-            if width >= 360 {
-                #expect(totalNeeded <= width + 1)
-            }
+            #expect(totalNeeded <= width + 1)
         }
     }
 
@@ -62,7 +61,7 @@ struct DesignSystemLayoutTests {
         let colsLandscape = CVGridLayoutMetrics.columnCount(for: 844)
         let cardLandscape = CVGridLayoutMetrics.cardWidth(for: 844)
         #expect(colsLandscape >= 4 && colsLandscape <= 6)
-        #expect(cardLandscape >= 145 && cardLandscape <= 210)
+        #expect(cardLandscape >= 96 && cardLandscape <= 160)
         #expect(CVGridLayoutMetrics.columns(for: 844).count == colsLandscape)
     }
 
@@ -70,8 +69,8 @@ struct DesignSystemLayoutTests {
         #expect(CVGridLayoutMetrics.columnCount(for: 0) == 2)
         #expect(CVGridLayoutMetrics.columnCount(for: -50) == 2)
         #expect(CVGridLayoutMetrics.columnCount(for: .infinity) == 2)
-        #expect(CVGridLayoutMetrics.cardWidth(for: 0) == 160)
-        #expect(CVGridLayoutMetrics.cardWidth(for: .nan) == 160)
+        #expect(CVGridLayoutMetrics.cardWidth(for: 0) == 114)
+        #expect(CVGridLayoutMetrics.cardWidth(for: .nan) == 114)
     }
 
     @Test func allMediaProjectTypesUseValidSFSymbolsWithoutEmojis() {

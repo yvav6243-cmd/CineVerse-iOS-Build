@@ -1,10 +1,10 @@
 import SwiftUI
 
 public struct ShimmerRail: View {
-    var cardWidth: CGFloat = 148
+    var cardWidth: CGFloat = 112
     var count: Int = 4
 
-    public init(cardWidth: CGFloat = 148, count: Int = 4) {
+    public init(cardWidth: CGFloat = 112, count: Int = 4) {
         self.cardWidth = cardWidth
         self.count = count
     }
@@ -41,7 +41,7 @@ public struct ShimmerHeroCard: View {
     public var body: some View {
         RoundedRectangle(cornerRadius: CVRadius.panel, style: .continuous)
             .fill(Color(.tertiarySystemFill))
-            .frame(height: 380)
+            .frame(height: 216)
             .overlay(
                 RoundedRectangle(cornerRadius: CVRadius.panel, style: .continuous)
                     .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)

@@ -6,6 +6,7 @@ public struct LibraryView: View {
     @State private var viewModel: LibraryViewModel
     @State private var showNewCollectionSheet: Bool = false
     @State private var renamingCollection: CustomCollectionRecord?
+    @State private var containerWidth: CGFloat = 0
 
     public init(container: AppContainer) {
         self.container = container
@@ -21,6 +22,11 @@ public struct LibraryView: View {
             contentBody
         }
         .background(Color(.systemGroupedBackground))
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { newWidth in
+            containerWidth = newWidth
+        }
         .navigationTitle("My List")
         .searchable(text: $viewModel.searchText, prompt: "Filter saved titles")
         .toolbar {
@@ -144,15 +150,18 @@ public struct LibraryView: View {
     }
 
     private func gridLibraryView(_ items: [LibraryEntryRecord]) -> some View {
-        ScrollView {
+        let cardWidth = CVGridLayoutMetrics.cardWidth(for: containerWidth)
+        let columns = CVGridLayoutMetrics.columns(for: containerWidth)
+
+        return ScrollView {
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 156, maximum: 180), spacing: CVSpacing.sm)],
+                columns: columns,
                 spacing: CVSpacing.md
             ) {
                 ForEach(items, id: \.mediaID) { entry in
                     let card = PosterCard(
                         item: entry.resolvedMediaItem,
-                        width: 160,
+                        width: cardWidth,
                         progressFraction: viewModel.progressByMediaID[entry.mediaID]
                     )
                     if let ref = entry.resolvedReference {

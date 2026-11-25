@@ -25,6 +25,7 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
     private let tvMaze: TVMazeServiceProtocol
     private let iTunes: ITunesCatalogServiceProtocol
     private let cache: ResponseDiskCache
+    private let playableMediaIDsProvider: (@Sendable () async -> Set<String>)?
 
     private let cacheTTL: TimeInterval = 6 * 3600
 
@@ -33,13 +34,15 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
         aniList: AniListServiceProtocol,
         tvMaze: TVMazeServiceProtocol,
         iTunes: ITunesCatalogServiceProtocol = ITunesCatalogService(httpClient: URLSessionHTTPClient()),
-        cache: ResponseDiskCache
+        cache: ResponseDiskCache,
+        playableMediaIDsProvider: (@Sendable () async -> Set<String>)? = nil
     ) {
         self.tmdb = tmdb
         self.aniList = aniList
         self.tvMaze = tvMaze
         self.iTunes = iTunes
         self.cache = cache
+        self.playableMediaIDsProvider = playableMediaIDsProvider
     }
 
     public func homeFeed(_ section: HomeSectionType, language: String) async throws -> [MediaItem] {
@@ -147,13 +150,18 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
             }
         }
 
+        if page == 1 {
+            collected.insert(contentsOf: iTunes.openCinemaShowcase(), at: 0)
+        }
+        let userPlayable = await (playableMediaIDsProvider?() ?? [])
         let merged = MediaMerger.merge(collected)
         let processed = CatalogQueryPlanner.postFilterAndSort(
             items: merged,
             criteria: criteria,
-            excludeJapaneseForCartoons: excludeJapanese
+            excludeJapaneseForCartoons: excludeJapanese,
+            userPlayableMediaIDs: userPlayable
         )
-        return CatalogPage(items: processed, hasMore: anyHasMore)
+        return CatalogPage(items: processed, hasMore: anyHasMore && !criteria.onlyAvailableToWatch)
     }
 
     public func search(query: String, criteria: CatalogFilterCriteria, page: Int, language: String) async throws -> CatalogPage {
@@ -165,6 +173,13 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
         let hasTMDB = SecretsProvider.tmdbCredential() != nil
         var allItems: [MediaItem] = []
         var anyHasMore = false
+
+        if page == 1 {
+            let localOpenMatches = iTunes.openCinemaShowcase().filter {
+                PlayableCatalogEvaluator.matchesSearchQuery($0, query: trimmed)
+            }
+            allItems.append(contentsOf: localOpenMatches)
+        }
 
         await withTaskGroup(of: (items: [MediaItem], hasMore: Bool).self) { group in
             if hasTMDB {
@@ -181,6 +196,10 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
                 return (try? await aniList.fetchMediaPage(params)) ?? ([], false)
             }
             if page == 1 {
+                group.addTask { [aniList] in
+                    let entityItems = (try? await aniList.searchEntities(query: trimmed)) ?? []
+                    return (entityItems, false)
+                }
                 group.addTask { [iTunes] in
                     let movies = (try? await iTunes.searchMovies(query: trimmed, limit: 35)) ?? []
                     return (movies, false)
@@ -188,6 +207,15 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
                 group.addTask { [tvMaze] in
                     let shows = (try? await tvMaze.searchShows(query: trimmed)) ?? []
                     return (shows, false)
+                }
+                if let exactYear = Int(trimmed), (1920...2030).contains(exactYear) {
+                    group.addTask { [aniList] in
+                        var p = AniListSearchParameters()
+                        p.yearFrom = exactYear
+                        p.yearTo = exactYear
+                        p.perPage = 16
+                        return (try? await aniList.fetchMediaPage(p)) ?? ([], false)
+                    }
                 }
             }
 
@@ -197,13 +225,15 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
             }
         }
 
+        let userPlayable = await (playableMediaIDsProvider?() ?? [])
         let merged = MediaMerger.merge(allItems)
         let filtered = CatalogQueryPlanner.postFilterAndSort(
             items: merged,
             criteria: criteria,
-            query: trimmed
+            query: trimmed,
+            userPlayableMediaIDs: userPlayable
         )
-        return CatalogPage(items: filtered, hasMore: anyHasMore)
+        return CatalogPage(items: filtered, hasMore: anyHasMore && !criteria.onlyAvailableToWatch)
     }
 
     public func suggestions(prefix: String, language: String) async -> [String] {

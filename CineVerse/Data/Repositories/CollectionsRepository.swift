@@ -7,7 +7,24 @@ public protocol CollectionsRepositoryProtocol: AnyObject {
     func collection(id: UUID) -> CustomCollectionRecord?
     @discardableResult
     func createCollection(name: String, symbolName: String) -> CustomCollectionRecord
+    @discardableResult
+    func createSmartCollection(
+        name: String,
+        symbolName: String,
+        description: String,
+        kind: CollectionKind,
+        coverURLString: String?
+    ) -> CustomCollectionRecord
     func renameCollection(id: UUID, name: String, symbolName: String)
+    func updateCollectionDetails(
+        id: UUID,
+        name: String,
+        symbolName: String,
+        description: String,
+        kind: CollectionKind,
+        coverURLString: String?
+    )
+    func setItemPriority(in collectionID: UUID, mediaID: String, priority: WatchPriorityLevel)
     func deleteCollection(id: UUID)
     func add(item: MediaItem, to collectionID: UUID)
     func remove(mediaID: String, from collectionID: UUID)
@@ -42,10 +59,24 @@ public final class CollectionsRepository: CollectionsRepositoryProtocol {
 
     @discardableResult
     public func createCollection(name: String, symbolName: String) -> CustomCollectionRecord {
+        createSmartCollection(name: name, symbolName: symbolName, description: "", kind: .standard, coverURLString: nil)
+    }
+
+    @discardableResult
+    public func createSmartCollection(
+        name: String,
+        symbolName: String,
+        description: String,
+        kind: CollectionKind,
+        coverURLString: String?
+    ) -> CustomCollectionRecord {
         let nextOrder = (allCollections().map(\.sortOrder).max() ?? -1) + 1
         let collection = CustomCollectionRecord(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             symbolName: symbolName,
+            collectionDescription: description.trimmingCharacters(in: .whitespacesAndNewlines),
+            kind: kind,
+            customCoverURLString: coverURLString?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
             sortOrder: nextOrder
         )
         modelContext.insert(collection)
@@ -57,6 +88,31 @@ public final class CollectionsRepository: CollectionsRepositoryProtocol {
         guard let target = collection(id: id) else { return }
         target.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         target.symbolName = symbolName
+        save()
+    }
+
+    public func updateCollectionDetails(
+        id: UUID,
+        name: String,
+        symbolName: String,
+        description: String,
+        kind: CollectionKind,
+        coverURLString: String?
+    ) {
+        guard let target = collection(id: id) else { return }
+        target.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        target.symbolName = symbolName
+        target.collectionDescription = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        target.kind = kind
+        target.customCoverURLString = coverURLString?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        save()
+    }
+
+    public func setItemPriority(in collectionID: UUID, mediaID: String, priority: WatchPriorityLevel) {
+        guard let target = collection(id: collectionID) else { return }
+        for item in target.items where item.mediaID == mediaID {
+            item.priority = priority
+        }
         save()
     }
 

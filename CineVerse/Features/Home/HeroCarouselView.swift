@@ -7,7 +7,7 @@ public struct HeroCarouselView: View {
     let onOpen: (MediaItem) -> Void
     let onToggleWatchlist: (MediaItem) -> Void
 
-    private let cardHeight: CGFloat = 380
+    private let cardHeight: CGFloat = 216
 
     public init(
         items: [MediaItem],
@@ -147,7 +147,7 @@ public struct HeroCarouselView: View {
                 }
                 .padding(.top, CVSpacing.xxs)
             }
-            .padding(CVSpacing.lg)
+            .padding(CVSpacing.md)
         }
         .frame(height: cardHeight)
         .clipShape(RoundedRectangle(cornerRadius: CVRadius.panel, style: .continuous))
@@ -155,7 +155,7 @@ public struct HeroCarouselView: View {
             RoundedRectangle(cornerRadius: CVRadius.panel, style: .continuous)
                 .strokeBorder(Color.white.opacity(0.16), lineWidth: 0.6)
         )
-        .shadow(color: Color.black.opacity(0.22), radius: 14, x: 0, y: 8)
+        .shadow(color: Color.black.opacity(0.18), radius: 10, x: 0, y: 5)
         .padding(.horizontal, CVSpacing.md)
         .contentShape(RoundedRectangle(cornerRadius: CVRadius.panel, style: .continuous))
         .onTapGesture {

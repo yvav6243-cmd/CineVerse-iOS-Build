@@ -233,8 +233,10 @@ public final class VideoSourceManager {
     private static func priority(for format: VideoStreamFormat) -> Int {
         switch format {
         case .localFile: return 0
-        case .hls, .mp4, .webm, .dash: return 1
-        case .externalOfficialService: return 2
+        case .hls: return 1
+        case .mp4: return 2
+        case .webm, .dash: return 3
+        case .externalOfficialService: return 4
         }
     }
 

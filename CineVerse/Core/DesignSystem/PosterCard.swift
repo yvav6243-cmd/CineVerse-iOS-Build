@@ -2,7 +2,7 @@ import SwiftUI
 
 public struct PosterCard: View {
     let item: MediaItem
-    var width: CGFloat = 148
+    var width: CGFloat = 112
     var progressFraction: Double? = nil
     var transitionNamespace: Namespace.ID? = nil
     var transitionID: String? = nil
@@ -11,7 +11,7 @@ public struct PosterCard: View {
 
     public init(
         item: MediaItem,
-        width: CGFloat = 148,
+        width: CGFloat = 112,
         progressFraction: Double? = nil,
         transitionNamespace: Namespace.ID? = nil,
         transitionID: String? = nil
@@ -48,21 +48,21 @@ public struct PosterCard: View {
 
                 VStack(spacing: CVSpacing.xs) {
                     HStack(spacing: 4) {
-                        TypeBadge(projectType: item.projectType)
+                        TypeBadge(projectType: item.projectType, iconOnly: width < 126)
                         Spacer(minLength: 2)
                         RatingBadge(score: item.displayRating)
                             .layoutPriority(1)
                     }
                     .environment(\.colorScheme, .dark)
-                    .padding(.horizontal, 7)
-                    .padding(.top, 7)
+                    .padding(.horizontal, 5)
+                    .padding(.top, 5)
 
                     Spacer()
 
                     if let progressFraction, progressFraction > 0.01 {
-                        CVProgressBar(fraction: progressFraction, height: 4)
-                            .padding(.horizontal, 8)
-                            .padding(.bottom, 8)
+                        CVProgressBar(fraction: progressFraction, height: 3.5)
+                            .padding(.horizontal, 6)
+                            .padding(.bottom, 6)
                     }
                 }
             }
@@ -73,7 +73,7 @@ public struct PosterCard: View {
                     .strokeBorder(Color.white.opacity(0.15), lineWidth: 0.6)
             )
             .cvMatchedSource(id: transitionID ?? item.id, in: transitionNamespace)
-            .shadow(color: Color.black.opacity(0.20), radius: 10, x: 0, y: 6)
+            .shadow(color: Color.black.opacity(0.16), radius: 6, x: 0, y: 4)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.localizedTitle)

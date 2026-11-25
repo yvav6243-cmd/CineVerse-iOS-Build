@@ -37,9 +37,8 @@ public struct TrailerCard: View {
                             targetSize: CGSize(width: 720, height: 405),
                             fallbackSymbol: "play.rectangle.fill"
                         )
-                        .aspectRatio(16.0 / 9.0, contentMode: .fill)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 196)
+                        .frame(height: 148)
                         .clipped()
 
                         LinearGradient(
@@ -57,9 +56,9 @@ public struct TrailerCard: View {
                             HStack {
                                 Spacer()
                                 Image(systemName: "play.fill")
-                                    .font(.title2.weight(.bold))
+                                    .font(.headline.weight(.bold))
                                     .foregroundStyle(.white)
-                                    .frame(width: 56, height: 56)
+                                    .frame(width: 44, height: 44)
                                     .cvGlass(Circle(), interactive: true)
                                 Spacer()
                             }
@@ -80,12 +79,12 @@ public struct TrailerCard: View {
                             Image(systemName: "play.tv.fill")
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(.white)
-                                .padding(8)
+                                .padding(7)
                                 .background(Color.white.opacity(0.20), in: Circle())
                         }
-                        .padding(CVSpacing.md)
+                        .padding(CVSpacing.sm)
                     }
-                    .frame(height: 196)
+                    .frame(height: 148)
                     .clipShape(RoundedRectangle(cornerRadius: CVRadius.card, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: CVRadius.card, style: .continuous)

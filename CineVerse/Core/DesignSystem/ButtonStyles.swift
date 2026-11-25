@@ -11,8 +11,8 @@ public struct CVPrimaryButtonStyle: ButtonStyle {
         configuration.label
             .font(compact ? CVFont.caption.weight(.semibold) : CVFont.callout.weight(.semibold))
             .foregroundStyle(Color.white)
-            .padding(.horizontal, compact ? CVSpacing.md : CVSpacing.lg)
-            .padding(.vertical, compact ? CVSpacing.xs + 2 : CVSpacing.sm + 2)
+            .padding(.horizontal, compact ? 12 : 16)
+            .padding(.vertical, compact ? 7 : 10)
             .background(
                 CVColor.irisGradient,
                 in: Capsule(style: .continuous)
@@ -48,8 +48,8 @@ public struct CVGlassButtonStyle: ButtonStyle {
         configuration.label
             .font(compact ? CVFont.caption.weight(.semibold) : CVFont.callout.weight(.semibold))
             .foregroundStyle(Color.primary)
-            .padding(.horizontal, compact ? CVSpacing.sm : CVSpacing.md)
-            .padding(.vertical, compact ? CVSpacing.xs + 1 : CVSpacing.sm)
+            .padding(.horizontal, compact ? 10 : 14)
+            .padding(.vertical, compact ? 6 : 9)
             .cvGlass(Capsule(style: .continuous), interactive: true, tint: tint)
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .animation(CVMotion.snappy, value: configuration.isPressed)
@@ -59,14 +59,14 @@ public struct CVGlassButtonStyle: ButtonStyle {
 public struct CVIconButton: View {
     let symbolName: String
     let accessibilityLabel: String
-    var size: CGFloat = 38
+    var size: CGFloat = 34
     var tint: Color? = nil
     let action: () -> Void
 
     public init(
         symbolName: String,
         accessibilityLabel: String,
-        size: CGFloat = 38,
+        size: CGFloat = 34,
         tint: Color? = nil,
         action: @escaping () -> Void
     ) {

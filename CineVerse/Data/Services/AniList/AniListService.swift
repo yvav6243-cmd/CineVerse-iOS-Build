@@ -12,6 +12,7 @@ public struct AniListSearchParameters: Sendable {
     public var formats: [String]?
     public var status: String?
     public var minRating: Double?
+    public var maxRating: Double?
     public var maxDurationMinutes: Int?
 
     public init() {}
@@ -22,6 +23,11 @@ public protocol AniListServiceProtocol: Sendable {
     func mediaDetails(id: Int) async throws -> (item: MediaItem, malID: Int?, streamingLinks: [AniListStreamingEpisodeDTO])
     func airingSchedule(from: Date, to: Date, page: Int) async throws -> [PremiereEvent]
     func genres() async throws -> [String]
+    func searchEntities(query: String) async throws -> [MediaItem]
+}
+
+public extension AniListServiceProtocol {
+    func searchEntities(query: String) async throws -> [MediaItem] { [] }
 }
 
 public final class AniListService: AniListServiceProtocol, @unchecked Sendable {
@@ -61,6 +67,9 @@ public final class AniListService: AniListServiceProtocol, @unchecked Sendable {
         }
         if let minRating = params.minRating, minRating > 0 {
             variables["averageScoreGreater"] = Int((minRating * 10.0).rounded())
+        }
+        if let maxRating = params.maxRating, maxRating < 10.0 {
+            variables["averageScoreLesser"] = Int((maxRating * 10.0).rounded()) + 1
         }
         if let maxDuration = params.maxDurationMinutes {
             variables["durationLesser"] = maxDuration + 1
@@ -107,6 +116,45 @@ public final class AniListService: AniListServiceProtocol, @unchecked Sendable {
         let ep = try makeGraphQLEndpoint(query: AniListQueries.genres, variables: [:])
         let response = try await httpClient.send(ep, as: AniListGraphQLResponse<AniListGenresDataDTO>.self)
         return (response.data?.genreCollection ?? []).filter { $0.lowercased() != "hentai" }
+    }
+
+    public func searchEntities(query: String) async throws -> [MediaItem] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 2 else { return [] }
+        let ep = try makeGraphQLEndpoint(query: AniListQueries.searchEntities, variables: ["q": trimmed])
+        let response = try await httpClient.send(ep, as: AniListGraphQLResponse<AniListEntitySearchDataDTO>.self)
+        guard let data = response.data else { return [] }
+
+        var results: [MediaItem] = []
+        for studio in data.studios?.studios ?? [] {
+            let sName = studio.name ?? ""
+            for node in (studio.media?.nodes ?? []) where node.isAdult != true {
+                var item = AniListMapper.mapMedia(node)
+                if !sName.isEmpty { item.studio = sName }
+                results.append(item)
+            }
+        }
+        for charEntry in data.characters?.characters ?? [] {
+            let cName = charEntry.name?.full ?? ""
+            for node in (charEntry.media?.nodes ?? []) where node.isAdult != true {
+                var item = AniListMapper.mapMedia(node)
+                if !cName.isEmpty {
+                    item.cast.append(MediaCreditPerson(id: "ani:c:\(node.id):\(cName)", name: cName, roleOrCharacter: cName, department: "Voice"))
+                }
+                results.append(item)
+            }
+        }
+        for staffEntry in data.staff?.staff ?? [] {
+            let pName = staffEntry.name?.full ?? ""
+            for node in (staffEntry.staffMedia?.nodes ?? []) where node.isAdult != true {
+                var item = AniListMapper.mapMedia(node)
+                if !pName.isEmpty {
+                    item.cast.append(MediaCreditPerson(id: "ani:s:\(node.id):\(pName)", name: pName, roleOrCharacter: "Staff / Creator", department: "Staff"))
+                }
+                results.append(item)
+            }
+        }
+        return results
     }
 
     private func makeGraphQLEndpoint(query: String, variables: [String: Any]) throws -> Endpoint {

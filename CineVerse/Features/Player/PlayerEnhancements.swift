@@ -3,6 +3,107 @@ import AVFoundation
 import CoreMedia
 import CoreGraphics
 
+public enum PlaybackLifecycleState: String, Equatable, Sendable {
+    case loading = "Loading"
+    case ready = "Ready"
+    case buffering = "Buffering"
+    case playing = "Playing"
+    case paused = "Paused"
+    case failed = "Failed"
+
+    public var isActivePlaybackIntent: Bool {
+        switch self {
+        case .loading, .buffering, .playing:
+            return true
+        case .ready, .paused, .failed:
+            return false
+        }
+    }
+
+    public var statusSymbol: String {
+        switch self {
+        case .loading: return "hourglass"
+        case .ready: return "checkmark.circle"
+        case .buffering: return "arrow.triangle.2.circlepath"
+        case .playing: return "play.fill"
+        case .paused: return "pause.fill"
+        case .failed: return "exclamationmark.triangle.fill"
+        }
+    }
+}
+
+public enum VideoScalingMode: String, CaseIterable, Identifiable, Sendable {
+    case fit = "Fit"
+    case fill = "Fill"
+    case original = "Original"
+
+    public var id: String { rawValue }
+
+    public var symbolName: String {
+        switch self {
+        case .fit: return "rectangle.arrowtriangle.2.inward"
+        case .fill: return "rectangle.arrowtriangle.2.outward"
+        case .original: return "viewfinder"
+        }
+    }
+
+    public var next: VideoScalingMode {
+        switch self {
+        case .fit: return .fill
+        case .fill: return .original
+        case .original: return .fit
+        }
+    }
+}
+
+public enum VideoScalingCalculator {
+    public static func targetFrame(
+        containerSize: CGSize,
+        videoSize: CGSize,
+        displayScale: CGFloat = 1.0,
+        mode: VideoScalingMode
+    ) -> CGRect {
+        guard containerSize.width.isFinite,
+              containerSize.height.isFinite,
+              containerSize.width > 0,
+              containerSize.height > 0 else {
+            return .zero
+        }
+
+        if mode == .fill || !videoSize.width.isFinite || !videoSize.height.isFinite || videoSize.width <= 0 || videoSize.height <= 0 {
+            return CGRect(origin: .zero, size: containerSize)
+        }
+
+        switch mode {
+        case .fill:
+            return CGRect(origin: .zero, size: containerSize)
+        case .fit:
+            let scale = min(containerSize.width / videoSize.width, containerSize.height / videoSize.height)
+            let w = videoSize.width * scale
+            let h = videoSize.height * scale
+            return CGRect(
+                x: (containerSize.width - w) * 0.5,
+                y: (containerSize.height - h) * 0.5,
+                width: w,
+                height: h
+            )
+        case .original:
+            let safeScale = max(displayScale, 1.0)
+            let nativeW = videoSize.width / safeScale
+            let nativeH = videoSize.height / safeScale
+            let clampScale = min(1.0, min(containerSize.width / nativeW, containerSize.height / nativeH))
+            let w = nativeW * clampScale
+            let h = nativeH * clampScale
+            return CGRect(
+                x: (containerSize.width - w) * 0.5,
+                y: (containerSize.height - h) * 0.5,
+                width: w,
+                height: h
+            )
+        }
+    }
+}
+
 public enum VideoPicturePreset: String, CaseIterable, Identifiable, Codable, Sendable {
     case standard = "Standard"
     case vividCinema = "Vivid Cinema"

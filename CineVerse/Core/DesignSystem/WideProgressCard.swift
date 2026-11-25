@@ -6,7 +6,7 @@ public struct WideProgressCard: View {
     let imageURL: URL?
     let projectType: MediaProjectType
     let progressFraction: Double
-    var width: CGFloat = 276
+    var width: CGFloat = 216
 
     private var cardHeight: CGFloat { width * 9.0 / 16.0 }
 
@@ -16,7 +16,7 @@ public struct WideProgressCard: View {
         imageURL: URL?,
         projectType: MediaProjectType,
         progressFraction: Double,
-        width: CGFloat = 276
+        width: CGFloat = 216
     ) {
         self.title = title
         self.subtitle = subtitle

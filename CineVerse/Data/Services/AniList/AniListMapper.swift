@@ -18,11 +18,16 @@ public enum AniListMapper {
         let totalEps = max(dto.episodes ?? (projectType.isEpisodic ? 12 : 1), 1)
         let ref = MediaReference(provider: .aniList, kind: .anime, providerID: String(dto.id))
 
+        let studioName = dto.studios?.nodes?.compactMap { $0.name?.nilIfEmpty }.first ?? ""
         let director = dto.staff?.edges?
             .first(where: { $0.role?.lowercased().contains("director") == true })?
             .node?.name?.full
-            ?? dto.studios?.nodes?.first?.name
+            ?? studioName.nilIfEmpty
             ?? "Animation Studio"
+        let altTitles: [String] = Array(Set(
+            ([dto.title?.romaji, dto.title?.english, dto.title?.native].compactMap { $0?.nilIfEmpty } + (dto.synonyms ?? []))
+                .filter { $0 != localizedTitle && $0 != originalTitle }
+        )).sorted()
 
         let cast: [MediaCreditPerson] = (dto.characters?.edges ?? []).enumerated().compactMap { index, edge in
             guard let charName = edge.node?.name?.full else { return nil }
@@ -103,6 +108,8 @@ public enum AniListMapper {
             backdropURL: dto.bannerImage.flatMap(URL.init(string:)) ?? dto.coverImage?.extraLarge.flatMap(URL.init(string:)),
             bannerAccentHex: dto.coverImage?.color,
             director: director,
+            studio: studioName,
+            alternativeTitles: altTitles,
             cast: cast,
             seasons: seasons,
             trailerURL: trailerURL,

@@ -13,8 +13,23 @@ public final class SearchViewModel {
     }
 
     public private(set) var submittedQuery: String = ""
-    public var selectedCategory: MediaProjectType? = nil
-    public var searchByOriginalTitleOnly: Bool = false
+    public var filterCriteria = CatalogFilterCriteria()
+    public var selectedCategory: MediaProjectType? {
+        get { filterCriteria.selectedCategory }
+        set { filterCriteria.selectedCategory = newValue }
+    }
+    public var searchByOriginalTitleOnly: Bool {
+        get { filterCriteria.searchByOriginalTitleOnly }
+        set { filterCriteria.searchByOriginalTitleOnly = newValue }
+    }
+    public var onlyAvailableToWatch: Bool {
+        get { filterCriteria.onlyAvailableToWatch }
+        set { filterCriteria.onlyAvailableToWatch = newValue }
+    }
+
+    public let catalogRepository: CatalogRepositoryProtocol
+    private let searchHistoryRepository: SearchHistoryRepositoryProtocol
+    public let settingsStore: SettingsStore
 
     public private(set) var suggestions: [String] = []
     public private(set) var matchingHistory: [SearchHistoryRecord] = []
@@ -24,10 +39,6 @@ public final class SearchViewModel {
     public private(set) var state: LoadState<[MediaItem]> = .idle
     public private(set) var isLoadingMore: Bool = false
     public private(set) var hasMore: Bool = false
-
-    private let catalogRepository: CatalogRepositoryProtocol
-    private let searchHistoryRepository: SearchHistoryRepositoryProtocol
-    private let settingsStore: SettingsStore
 
     private let suggestionDebouncer = Debouncer(delay: .milliseconds(300))
     private let liveSearchDebouncer = Debouncer(delay: .milliseconds(450))
@@ -103,13 +114,26 @@ public final class SearchViewModel {
     }
 
     public func toggleOriginalTitleOnly() async {
-        searchByOriginalTitleOnly.toggle()
+        filterCriteria.searchByOriginalTitleOnly.toggle()
         await rerunActiveSearchIfNeeded()
     }
 
+    public func toggleAvailableToWatchOnly() async {
+        filterCriteria.onlyAvailableToWatch.toggle()
+        await rerunActiveSearchIfNeeded()
+    }
+
+    public func applyFilterCriteria(_ updated: CatalogFilterCriteria) async {
+        filterCriteria = updated
+        if activeSearchQuery.isEmpty && updated.activeFilterCount > 0 {
+            await performSearch(query: "", page: 1, append: false)
+        } else {
+            await rerunActiveSearchIfNeeded()
+        }
+    }
+
     public func resetResultFilters() async {
-        selectedCategory = nil
-        searchByOriginalTitleOnly = false
+        filterCriteria.reset()
         await rerunActiveSearchIfNeeded()
     }
 
@@ -210,9 +234,7 @@ public final class SearchViewModel {
             state = .loading
         }
 
-        var criteria = CatalogFilterCriteria()
-        criteria.selectedCategory = selectedCategory
-        criteria.searchByOriginalTitleOnly = searchByOriginalTitleOnly
+        let criteria = filterCriteria
         let language = settingsStore.contentLanguageCode
 
         let task = Task { [weak self] in

@@ -34,7 +34,7 @@ public struct ExploreView: View {
         .searchable(
             text: $viewModel.searchText,
             placement: .navigationBarDrawer(displayMode: .always),
-            prompt: "Movies, anime, series, original titles"
+            prompt: "Titles, actors, directors, studios, characters, years"
         )
         .searchSuggestions {
             SearchSuggestionsView(

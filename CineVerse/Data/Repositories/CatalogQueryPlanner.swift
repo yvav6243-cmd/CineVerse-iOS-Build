@@ -117,7 +117,8 @@ public enum CatalogQueryPlanner {
         items: [MediaItem],
         criteria: CatalogFilterCriteria,
         query: String? = nil,
-        excludeJapaneseForCartoons: Bool = false
+        excludeJapaneseForCartoons: Bool = false,
+        userPlayableMediaIDs: Set<String> = []
     ) -> [MediaItem] {
         let filtered = items.filter { item in
             if let category = criteria.selectedCategory {
@@ -175,10 +176,20 @@ public enum CatalogQueryPlanner {
             }
             if criteria.searchByOriginalTitleOnly, let q = query?.nilIfEmpty {
                 let foldedQuery = q.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
-                let foldedOrig = item.originalTitle.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
-                if !foldedOrig.contains(foldedQuery) {
+                let candidates = [item.originalTitle] + item.alternativeTitles
+                let matchesOrigOrAlt = candidates.contains {
+                    $0.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current).contains(foldedQuery)
+                }
+                if !matchesOrigOrAlt {
                     return false
                 }
+            }
+            if !PlayableCatalogEvaluator.matchesAdvancedCriteria(
+                item: item,
+                criteria: criteria,
+                userPlayableMediaIDs: userPlayableMediaIDs
+            ) {
+                return false
             }
             return true
         }
@@ -223,6 +234,7 @@ public enum CatalogQueryPlanner {
         params.originCountry = criteria.country
         params.originalLanguage = criteria.language
         params.minRating = criteria.minimumRating > 0 ? criteria.minimumRating : nil
+        params.maxRating = criteria.maximumRating < 10.0 ? criteria.maximumRating : nil
         params.maxDurationMinutes = criteria.maxDurationMinutes
         params.sortBy = tmdbSortKey(for: criteria.sortBy, isMovie: true)
         return params
@@ -245,6 +257,7 @@ public enum CatalogQueryPlanner {
         params.originCountry = criteria.country
         params.originalLanguage = criteria.language
         params.minRating = criteria.minimumRating > 0 ? criteria.minimumRating : nil
+        params.maxRating = criteria.maximumRating < 10.0 ? criteria.maximumRating : nil
         params.maxDurationMinutes = criteria.maxDurationMinutes
         params.tvStatusCode = criteria.releaseStatus.flatMap(tmdbTVStatusCode(for:))
         params.sortBy = tmdbSortKey(for: criteria.sortBy, isMovie: false)
@@ -265,6 +278,7 @@ public enum CatalogQueryPlanner {
         params.yearTo = criteria.yearTo
         params.countryOfOrigin = criteria.country
         params.minRating = criteria.minimumRating > 0 ? criteria.minimumRating : nil
+        params.maxRating = criteria.maximumRating < 10.0 ? criteria.maximumRating : nil
         params.maxDurationMinutes = criteria.maxDurationMinutes
         params.status = criteria.releaseStatus.flatMap(aniListStatus(for:))
         params.sort = aniListSort(for: criteria.sortBy)

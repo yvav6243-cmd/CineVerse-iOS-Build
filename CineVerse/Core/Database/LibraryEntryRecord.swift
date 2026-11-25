@@ -29,6 +29,9 @@ public final class LibraryEntryRecord {
     public var preferredAudioLanguage: String?
     public var preferredSubtitleLanguage: String?
     public var preferredQualityRaw: String?
+    public var preferredPlaybackRate: Float?
+    public var directorName: String?
+    public var studioName: String?
     @Attribute(.externalStorage) public var snapshotData: Data?
 
     public init(
@@ -58,6 +61,9 @@ public final class LibraryEntryRecord {
         preferredAudioLanguage: String? = nil,
         preferredSubtitleLanguage: String? = nil,
         preferredQualityRaw: String? = nil,
+        preferredPlaybackRate: Float? = nil,
+        directorName: String? = nil,
+        studioName: String? = nil,
         snapshotData: Data? = nil
     ) {
         self.mediaID = mediaID
@@ -86,6 +92,9 @@ public final class LibraryEntryRecord {
         self.preferredAudioLanguage = preferredAudioLanguage
         self.preferredSubtitleLanguage = preferredSubtitleLanguage
         self.preferredQualityRaw = preferredQualityRaw
+        self.preferredPlaybackRate = preferredPlaybackRate
+        self.directorName = directorName
+        self.studioName = studioName
         self.snapshotData = snapshotData
     }
 

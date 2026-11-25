@@ -89,6 +89,7 @@ public enum TVMazeMapper {
             posterURL: posterURL,
             backdropURL: backdropURL,
             director: dto.network?.name ?? dto.webChannel?.name ?? "Network Production",
+            studio: dto.network?.name ?? dto.webChannel?.name ?? "",
             cast: cast,
             seasons: mappedSeasons,
             officialPlatformLinks: officialLinks

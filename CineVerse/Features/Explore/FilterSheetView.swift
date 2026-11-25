@@ -48,12 +48,13 @@ public struct FilterSheetView: View {
     public var body: some View {
         NavigationStack {
             Form {
+                playbackAvailabilitySection
                 categorySection
                 genresSection
                 releaseSection
                 regionLanguageSection
                 ratingAndLengthSection
-                searchOptionsSection
+                peopleStudioAndTitleSection
             }
             .navigationTitle("Catalog Filters")
             .navigationBarTitleDisplayMode(.inline)
@@ -76,6 +77,40 @@ public struct FilterSheetView: View {
             .task(id: draft.selectedCategory) {
                 await loadGenres()
             }
+        }
+    }
+
+    private var playbackAvailabilitySection: some View {
+        Section {
+            Toggle(isOn: $draft.onlyAvailableToWatch) {
+                Label("Available to Watch Now", systemImage: "checkmark.seal.fill")
+            }
+            .tint(CVColor.success)
+
+            Picker("Minimum Video Quality", selection: $draft.minimumVideoQuality) {
+                Text("Any Quality").tag(VideoQualityTier?.none)
+                ForEach([VideoQualityTier.p4K, .p1440, .p1080, .p720], id: \.self) { tier in
+                    Text(tier.displayLabel).tag(VideoQualityTier?.some(tier))
+                }
+            }
+
+            Picker("Required Audio Language", selection: $draft.requiredAudioLanguage) {
+                Text("Any Audio Language").tag(String?.none)
+                ForEach(LanguageCatalog.audioAndSubtitleLanguages.prefix(12)) { lang in
+                    Text(lang.name).tag(String?.some(lang.code))
+                }
+            }
+
+            Picker("Voiceover Type", selection: $draft.requiredVoiceoverKind) {
+                Text("Any Voiceover").tag(AudioVoiceoverKind?.none)
+                ForEach(AudioVoiceoverKind.allCases, id: \.self) { kind in
+                    Text(kind.rawValue).tag(AudioVoiceoverKind?.some(kind))
+                }
+            }
+        } header: {
+            Text("Verified Playback & Voiceover")
+        } footer: {
+            Text("\"Available to Watch Now\" filters strictly by real verified video streams (Open Cinema, attached streams, and offline files), never counting trailers.")
         }
     }
 
@@ -206,8 +241,33 @@ public struct FilterSheetView: View {
                         .foregroundStyle(draft.minimumRating > 0 ? CVColor.iris : .secondary)
                         .monospacedDigit()
                 }
-                Slider(value: $draft.minimumRating, in: 0...9.5, step: 0.5)
-                    .tint(CVColor.iris)
+                Slider(value: Binding(
+                    get: { draft.minimumRating },
+                    set: { newVal in
+                        draft.minimumRating = newVal
+                        if newVal > draft.maximumRating { draft.maximumRating = newVal }
+                    }
+                ), in: 0...9.5, step: 0.5)
+                .tint(CVColor.iris)
+            }
+
+            VStack(alignment: .leading, spacing: CVSpacing.xs) {
+                HStack {
+                    Text("Maximum Rating")
+                    Spacer()
+                    Text(draft.maximumRating < 10.0 ? String(format: "≤ %.1f", draft.maximumRating) : "10.0")
+                        .font(CVFont.callout)
+                        .foregroundStyle(draft.maximumRating < 10.0 ? CVColor.iris : .secondary)
+                        .monospacedDigit()
+                }
+                Slider(value: Binding(
+                    get: { draft.maximumRating },
+                    set: { newVal in
+                        draft.maximumRating = newVal
+                        if newVal < draft.minimumRating { draft.minimumRating = newVal }
+                    }
+                ), in: 1.0...10.0, step: 0.5)
+                .tint(CVColor.iris)
             }
 
             Picker("Max Duration", selection: $draft.maxDurationMinutes) {
@@ -224,9 +284,18 @@ public struct FilterSheetView: View {
         }
     }
 
-    private var searchOptionsSection: some View {
-        Section("Title Matching") {
-            Toggle("Search Original Title Only", isOn: $draft.searchByOriginalTitleOnly)
+    private var peopleStudioAndTitleSection: some View {
+        Section("Actor, Director, Studio & Title Matching") {
+            TextField(
+                "Actor, Director, Studio, or Character",
+                text: Binding(
+                    get: { draft.personOrStudioQuery ?? "" },
+                    set: { draft.personOrStudioQuery = $0.isEmpty ? nil : $0 }
+                )
+            )
+            .autocorrectionDisabled()
+
+            Toggle("Search Original / Alt Title Only", isOn: $draft.searchByOriginalTitleOnly)
                 .tint(CVColor.iris)
         }
     }
