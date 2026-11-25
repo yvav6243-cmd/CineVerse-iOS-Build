@@ -181,12 +181,12 @@ if (-not $existingRun) {
 
 $artifactId = $null
 $runId = $null
-for ($attempt = 1; $attempt -le 72; $attempt++) {
+for ($attempt = 1; $attempt -le 120; $attempt++) {
     $runs = Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$repoName/actions/runs?per_page=10" -Headers $headers -Method Get
     $latestRun = $runs.workflow_runs | Where-Object { $_.head_sha -eq $newCommit.sha } | Select-Object -First 1
     if ($latestRun) {
         $runId = $latestRun.id
-        Write-Host ("      Статус: {0} / {1} (проверка {2}/72)" -f $latestRun.status, $latestRun.conclusion, $attempt)
+        Write-Host ("      Статус: {0} / {1} (проверка {2}/120)" -f $latestRun.status, $latestRun.conclusion, $attempt)
         if ($latestRun.status -eq "completed") {
             if ($latestRun.conclusion -eq "success") {
                 $arts = Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$repoName/actions/runs/$($latestRun.id)/artifacts" -Headers $headers -Method Get
@@ -225,7 +225,7 @@ for ($attempt = 1; $attempt -le 72; $attempt++) {
             }
         }
     } else {
-        Write-Host "      Ожидание старта workflow (проверка $attempt/72)..."
+        Write-Host "      Ожидание старта workflow (проверка $attempt/120)..."
     }
     Start-Sleep -Seconds 10
 }

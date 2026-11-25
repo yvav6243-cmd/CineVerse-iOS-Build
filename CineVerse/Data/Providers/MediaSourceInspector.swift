@@ -81,7 +81,7 @@ public actor MediaSourceInspector {
         var seenAudioKeys: Set<String> = []
         var dedupedAudio: [AudioTrackOption] = []
         for track in parsed.audioTracks {
-            let uriPart = track.dedicatedAudioStreamURL?.absoluteString ?? track.hlsGroupID ?? ""
+            let uriPart = track.dedicatedAudioStreamURL?.absoluteString ?? ""
             let key = "\(track.languageCode.lowercased())|\(track.voiceoverStudio.lowercased())|\(uriPart)"
             if seenAudioKeys.insert(key).inserted {
                 dedupedAudio.append(track)
