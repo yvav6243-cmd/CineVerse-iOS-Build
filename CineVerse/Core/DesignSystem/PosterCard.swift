@@ -32,21 +32,30 @@ public struct PosterCard: View {
                     fallbackSymbol: item.projectType.symbolName
                 )
                 .frame(width: width, height: posterHeight)
-                .clipShape(RoundedRectangle(cornerRadius: CVRadius.poster, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: CVRadius.poster, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
+                .clipped()
+
+                LinearGradient(
+                    stops: [
+                        .init(color: Color.black.opacity(0.42), location: 0.0),
+                        .init(color: Color.clear, location: 0.28),
+                        .init(color: Color.clear, location: 0.78),
+                        .init(color: Color.black.opacity((progressFraction ?? 0) > 0.01 ? 0.62 : 0.16), location: 1.0)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
-                .cvMatchedSource(id: transitionID ?? item.id, in: transitionNamespace)
+                .allowsHitTesting(false)
 
                 VStack(spacing: CVSpacing.xs) {
-                    HStack {
+                    HStack(spacing: 4) {
                         TypeBadge(projectType: item.projectType)
-                        Spacer(minLength: 4)
+                        Spacer(minLength: 2)
                         RatingBadge(score: item.displayRating)
+                            .layoutPriority(1)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.top, 8)
+                    .environment(\.colorScheme, .dark)
+                    .padding(.horizontal, 7)
+                    .padding(.top, 7)
 
                     Spacer()
 
@@ -58,7 +67,13 @@ public struct PosterCard: View {
                 }
             }
             .frame(width: width, height: posterHeight)
-            .shadow(color: Color.black.opacity(0.18), radius: 10, x: 0, y: 6)
+            .clipShape(RoundedRectangle(cornerRadius: CVRadius.poster, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: CVRadius.poster, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.15), lineWidth: 0.6)
+            )
+            .cvMatchedSource(id: transitionID ?? item.id, in: transitionNamespace)
+            .shadow(color: Color.black.opacity(0.20), radius: 10, x: 0, y: 6)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.localizedTitle)

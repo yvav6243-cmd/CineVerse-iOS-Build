@@ -84,8 +84,13 @@ public extension TimeInterval {
 // MARK: - Color Hex Initializer & Conversion
 
 public extension Color {
-    init(hex: String) {
+    static func parseHexRGBA(_ hex: String) -> (r: Double, g: Double, b: Double, a: Double) {
         let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        let validHexChars = CharacterSet(charactersIn: "0123456789ABCDEFabcdef")
+        guard !cleaned.isEmpty,
+              cleaned.unicodeScalars.allSatisfy({ validHexChars.contains($0) }) else {
+            return (110.0 / 255.0, 91.0 / 255.0, 1.0, 1.0)
+        }
         var int: UInt64 = 0
         Scanner(string: cleaned).scanHexInt64(&int)
         let a, r, g, b: UInt64
@@ -97,15 +102,27 @@ public extension Color {
         case 8:
             (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
         default:
-            (a, r, g, b) = (255, 110, 91, 255)
+            return (110.0 / 255.0, 91.0 / 255.0, 1.0, 1.0)
         }
+        return (Double(r) / 255.0, Double(g) / 255.0, Double(b) / 255.0, Double(a) / 255.0)
+    }
 
+    static func relativeLuminance(hex: String) -> Double {
+        let rgba = parseHexRGBA(hex)
+        func linearize(_ c: Double) -> Double {
+            c <= 0.03928 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * linearize(rgba.r) + 0.7152 * linearize(rgba.g) + 0.0722 * linearize(rgba.b)
+    }
+
+    init(hex: String) {
+        let rgba = Self.parseHexRGBA(hex)
         self.init(
             .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
+            red: rgba.r,
+            green: rgba.g,
+            blue: rgba.b,
+            opacity: rgba.a
         )
     }
 }

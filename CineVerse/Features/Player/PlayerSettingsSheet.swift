@@ -67,7 +67,7 @@ public struct PlayerSettingsSheet: View {
                     }
                 }
 
-                Section("Video Quality") {
+                Section {
                     if session.engine.availableQualities.isEmpty {
                         Text("Automatic stream quality")
                             .foregroundStyle(.secondary)
@@ -84,6 +84,41 @@ public struct PlayerSettingsSheet: View {
                                         Image(systemName: "checkmark")
                                             .foregroundStyle(CVColor.iris)
                                     }
+                                }
+                            }
+                        }
+                    }
+                } header: {
+                    HStack {
+                        Text("Video Quality")
+                        Spacer()
+                        Text(session.engine.diagnostics.compactSummary)
+                            .font(CVFont.micro)
+                            .foregroundStyle(CVColor.iris)
+                    }
+                }
+
+                Section("Picture Enhancement") {
+                    ForEach(VideoPicturePreset.allCases) { preset in
+                        Button {
+                            Haptics.selection()
+                            session.picturePreset = preset
+                        } label: {
+                            HStack(spacing: CVSpacing.sm) {
+                                Image(systemName: preset.symbolName)
+                                    .foregroundStyle(CVColor.iris)
+                                    .frame(width: 22)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(preset.rawValue)
+                                        .foregroundStyle(.primary)
+                                    Text(preset.subtitle)
+                                        .font(CVFont.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if session.picturePreset == preset {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(CVColor.iris)
                                 }
                             }
                         }
@@ -150,6 +185,40 @@ public struct PlayerSettingsSheet: View {
                                     Image(systemName: "checkmark")
                                         .foregroundStyle(CVColor.iris)
                                 }
+                            }
+                        }
+                    }
+
+                    if !session.subtitleEngine.cues.isEmpty {
+                        HStack {
+                            Text("Sync Offset")
+                            Spacer()
+                            Button("-0.25s") {
+                                Haptics.selection()
+                                session.subtitleEngine.adjustTimingOffset(by: -0.25, currentVideoTime: session.engine.currentTime)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+
+                            Text(String(format: "%+.2fs", session.subtitleEngine.timingOffsetSeconds))
+                                .font(CVFont.caption.weight(.semibold))
+                                .monospacedDigit()
+                                .frame(minWidth: 52)
+
+                            Button("+0.25s") {
+                                Haptics.selection()
+                                session.subtitleEngine.adjustTimingOffset(by: 0.25, currentVideoTime: session.engine.currentTime)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+
+                            if session.subtitleEngine.timingOffsetSeconds != 0 {
+                                Button("Reset") {
+                                    Haptics.selection()
+                                    session.subtitleEngine.resetTimingOffset(currentVideoTime: session.engine.currentTime)
+                                }
+                                .font(CVFont.caption)
+                                .buttonStyle(.borderless)
                             }
                         }
                     }

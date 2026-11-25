@@ -35,10 +35,15 @@ public struct WideProgressCard: View {
                     fallbackSymbol: projectType.symbolName
                 )
                 .frame(width: width, height: cardHeight)
+                .clipped()
 
                 LinearGradient(
-                    colors: [Color.clear, Color.black.opacity(0.75)],
-                    startPoint: .center,
+                    stops: [
+                        .init(color: Color.black.opacity(0.36), location: 0.0),
+                        .init(color: Color.clear, location: 0.35),
+                        .init(color: Color.black.opacity(0.80), location: 1.0)
+                    ],
+                    startPoint: .top,
                     endPoint: .bottom
                 )
 
@@ -49,7 +54,9 @@ public struct WideProgressCard: View {
                         Image(systemName: "play.circle.fill")
                             .font(.title2)
                             .foregroundStyle(.white)
+                            .shadow(color: .black.opacity(0.35), radius: 4, x: 0, y: 2)
                     }
+                    .environment(\.colorScheme, .dark)
                     Spacer()
                     Text(subtitle)
                         .font(CVFont.caption.weight(.semibold))

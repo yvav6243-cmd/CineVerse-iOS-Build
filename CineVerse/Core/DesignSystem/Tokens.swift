@@ -43,6 +43,51 @@ public enum CVColor {
     public static let success = Color(hex: "#30D158")
     public static let warning = Color(hex: "#FF9F0A")
     public static let danger = Color(hex: "#FF453A")
+
+    public static var irisGradient: LinearGradient {
+        LinearGradient(
+            colors: [Color(hex: "#7D6BFF"), Color(hex: "#5B46E8")],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+}
+
+public enum CVGridLayoutMetrics {
+    public static func columnCount(
+        for containerWidth: CGFloat,
+        horizontalPadding: CGFloat = CVSpacing.md * 2,
+        spacing: CGFloat = CVSpacing.sm,
+        minCardWidth: CGFloat = 148
+    ) -> Int {
+        guard containerWidth.isFinite, containerWidth > 0 else { return 2 }
+        let usable = max(containerWidth - horizontalPadding, minCardWidth * 2 + spacing)
+        let computed = Int(floor((usable + spacing) / (minCardWidth + spacing)))
+        return min(max(computed, 2), 6)
+    }
+
+    public static func cardWidth(
+        for containerWidth: CGFloat,
+        horizontalPadding: CGFloat = CVSpacing.md * 2,
+        spacing: CGFloat = CVSpacing.sm
+    ) -> CGFloat {
+        guard containerWidth.isFinite, containerWidth > 0 else { return 160 }
+        let cols = columnCount(for: containerWidth, horizontalPadding: horizontalPadding, spacing: spacing)
+        let usable = max(containerWidth - horizontalPadding, 260)
+        let raw = floor((usable - spacing * CGFloat(cols - 1)) / CGFloat(cols))
+        return min(max(raw, 130), 210)
+    }
+
+    public static func columns(
+        for containerWidth: CGFloat,
+        spacing: CGFloat = CVSpacing.sm
+    ) -> [GridItem] {
+        let count = columnCount(for: containerWidth, spacing: spacing)
+        return Array(
+            repeating: GridItem(.flexible(), spacing: spacing, alignment: .top),
+            count: count
+        )
+    }
 }
 
 public enum CVMotion {

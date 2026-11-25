@@ -110,10 +110,7 @@ public struct CatalogBrowseView: View {
         switch viewModel.state {
         case .idle, .loading:
             if viewModel.items.isEmpty {
-                VStack(spacing: CVSpacing.lg) {
-                    ShimmerRail()
-                    ShimmerRail()
-                }
+                loadingGrid
             } else {
                 gridContent(items: viewModel.items)
             }
@@ -162,8 +159,8 @@ public struct CatalogBrowseView: View {
     }
 
     private func gridContent(items: [MediaItem]) -> some View {
-        let cardWidth = resolvedCardWidth
-        let columns = [GridItem(.adaptive(minimum: 150, maximum: 195), spacing: CVSpacing.sm)]
+        let cardWidth = CVGridLayoutMetrics.cardWidth(for: containerWidth)
+        let columns = CVGridLayoutMetrics.columns(for: containerWidth)
 
         return VStack(spacing: CVSpacing.lg) {
             LazyVGrid(columns: columns, spacing: CVSpacing.lg) {
@@ -199,11 +196,28 @@ public struct CatalogBrowseView: View {
         }
     }
 
-    private var resolvedCardWidth: CGFloat {
-        guard containerWidth > 0 else { return 156 }
-        let usable = max(containerWidth - CVSpacing.md * 2, 300)
-        let columns = max(2, Int(floor((usable + CVSpacing.sm) / (150 + CVSpacing.sm))))
-        let width = floor((usable - CVSpacing.sm * CGFloat(columns - 1)) / CGFloat(columns))
-        return min(max(width, 148), 192)
+    private var loadingGrid: some View {
+        let cardWidth = CVGridLayoutMetrics.cardWidth(for: containerWidth)
+        let columns = CVGridLayoutMetrics.columns(for: containerWidth)
+
+        return LazyVGrid(columns: columns, spacing: CVSpacing.lg) {
+            ForEach(0..<8, id: \.self) { _ in
+                VStack(alignment: .leading, spacing: CVSpacing.xs) {
+                    RoundedRectangle(cornerRadius: CVRadius.poster, style: .continuous)
+                        .fill(Color(.tertiarySystemFill))
+                        .frame(width: cardWidth, height: cardWidth * 1.5)
+                        .cvShimmer(true)
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color(.tertiarySystemFill))
+                        .frame(width: cardWidth * 0.78, height: 12)
+                        .cvShimmer(true)
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color(.tertiarySystemFill))
+                        .frame(width: cardWidth * 0.46, height: 10)
+                        .cvShimmer(true)
+                }
+            }
+        }
+        .padding(.horizontal, CVSpacing.md)
     }
 }

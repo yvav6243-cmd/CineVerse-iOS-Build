@@ -55,18 +55,22 @@ public struct CategoryGridView: View {
         .buttonStyle(.plain)
     }
 
-    private func accentColor(for category: MediaProjectType) -> Color {
+    public static func accentHex(for category: MediaProjectType) -> String {
         switch category {
-        case .movie: return CVColor.iris
-        case .anime: return Color(hex: "#FF375F")
-        case .animeMovie: return Color(hex: "#BF5AF2")
-        case .tvSeries: return Color(hex: "#0A84FF")
-        case .cartoonSeries: return Color(hex: "#FF9F0A")
-        case .cartoonMovie: return Color(hex: "#FFD60A")
-        case .drama: return Color(hex: "#FF6482")
-        case .documentary: return Color(hex: "#30D158")
-        case .special: return Color(hex: "#64D2FF")
-        case .other: return Color(hex: "#AC8E68")
+        case .movie: return "#6E5BFF"
+        case .anime: return "#FF375F"
+        case .animeMovie: return "#BF5AF2"
+        case .tvSeries: return "#0A84FF"
+        case .cartoonSeries: return "#FF9F0A"
+        case .cartoonMovie: return "#F59E0B"
+        case .drama: return "#FF6482"
+        case .documentary: return "#30D158"
+        case .special: return "#0EA5E9"
+        case .other: return "#AC8E68"
         }
+    }
+
+    private func accentColor(for category: MediaProjectType) -> Color {
+        Color(hex: Self.accentHex(for: category))
     }
 }

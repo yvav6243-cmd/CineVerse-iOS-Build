@@ -103,9 +103,9 @@ public struct RootTabView: View {
             )
             .cvIfAvailableZoomTransition(id: ref.id, in: posterTransitionNamespace)
         case .seeAll(let section):
-            SeeAllView(section: section, container: container)
+            SeeAllView(section: section, container: container, transitionNamespace: posterTransitionNamespace)
         case .catalog(let category):
-            CatalogBrowseView(initialCategory: category, container: container)
+            CatalogBrowseView(initialCategory: category, container: container, transitionNamespace: posterTransitionNamespace)
         case .collection(let id):
             CollectionDetailView(collectionID: id, container: container)
         case .calendar:
@@ -134,13 +134,18 @@ public struct RootTabView: View {
         HStack(spacing: CVSpacing.xs) {
             Image(systemName: "wifi.slash")
                 .font(.caption.weight(.semibold))
+                .foregroundStyle(CVColor.warning)
             Text("Offline Mode — Showing cached titles & your local library")
                 .font(CVFont.caption)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
             Spacer()
         }
-        .foregroundStyle(Color.white)
         .padding(.horizontal, CVSpacing.md)
-        .padding(.vertical, 7)
-        .background(Color.orange.opacity(0.92))
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .bottom) {
+            Divider()
+        }
     }
 }

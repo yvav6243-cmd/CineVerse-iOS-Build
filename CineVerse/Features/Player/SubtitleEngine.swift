@@ -7,12 +7,34 @@ public final class SubtitleEngine {
     public private(set) var cues: [SubtitleCue] = []
     public private(set) var currentText: String?
     public private(set) var loadError: String?
+    public private(set) var timingOffsetSeconds: TimeInterval = 0
 
     private let httpClient: HTTPClient
     private let maxSubtitleBytes = 5 * 1024 * 1024
 
     public init(httpClient: HTTPClient) {
         self.httpClient = httpClient
+    }
+
+    public static func effectiveCueTime(forVideoTime videoTime: TimeInterval, offsetSeconds: TimeInterval) -> TimeInterval {
+        max(0, videoTime - offsetSeconds)
+    }
+
+    public func adjustTimingOffset(by delta: TimeInterval, currentVideoTime: TimeInterval) {
+        let clamped = min(max((timingOffsetSeconds + delta * 1.0), -10.0), 10.0)
+        timingOffsetSeconds = (clamped * 4.0).rounded() / 4.0
+        update(forTime: currentVideoTime)
+    }
+
+    public func resetTimingOffset(currentVideoTime: TimeInterval) {
+        timingOffsetSeconds = 0
+        update(forTime: currentVideoTime)
+    }
+
+    public func loadCuesDirectly(_ parsedCues: [SubtitleCue]) {
+        cues = parsedCues
+        loadError = nil
+        currentText = nil
     }
 
     public func loadExternal(url: URL, format: SubtitleFormat) async {
@@ -62,6 +84,7 @@ public final class SubtitleEngine {
         cues = []
         currentText = nil
         loadError = nil
+        timingOffsetSeconds = 0
     }
 
     public func update(forTime time: TimeInterval) {
@@ -70,14 +93,16 @@ public final class SubtitleEngine {
             return
         }
 
-        // Binary search for the rightmost cue whose startTime <= time
+        let effectiveTime = Self.effectiveCueTime(forVideoTime: time, offsetSeconds: timingOffsetSeconds)
+
+        // Binary search for the rightmost cue whose startTime <= effectiveTime
         var low = 0
         var high = cues.count - 1
         var candidate: Int?
 
         while low <= high {
             let mid = (low + high) / 2
-            if cues[mid].startTime <= time {
+            if cues[mid].startTime <= effectiveTime {
                 candidate = mid
                 low = mid + 1
             } else {
@@ -89,8 +114,8 @@ public final class SubtitleEngine {
         if let candidate {
             // Check backwards slightly for overlapping cues
             var idx = candidate
-            while idx >= 0 && time - cues[idx].startTime < 30 {
-                if cues[idx].startTime <= time && time <= cues[idx].endTime {
+            while idx >= 0 && effectiveTime - cues[idx].startTime < 30 {
+                if cues[idx].startTime <= effectiveTime && effectiveTime <= cues[idx].endTime {
                     activeLines.insert(cues[idx].text, at: 0)
                 }
                 idx -= 1

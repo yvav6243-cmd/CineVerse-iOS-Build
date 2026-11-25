@@ -3,7 +3,7 @@ import SwiftData
 import Testing
 @testable import CineVerse
 
-@Suite("Backup Service")
+@Suite("Category 10B: Backup, Merge Restore & Settings Persistence")
 struct BackupServiceTests {
     @MainActor
     @Test func roundtripPreservesLibraryProgressCollectionsAndFlagsLocalSources() throws {
@@ -50,7 +50,6 @@ struct BackupServiceTests {
 
         let exportedData = try BackupService.exportJSON(from: sourceContext, settings: sourceSettings)
 
-        // Restore into a fresh in-memory container
         let destContainer = try PersistenceController.makeContainer(inMemory: true)
         let destContext = destContainer.mainContext
         let destSettings = SettingsStore(modelContext: destContext)
@@ -72,5 +71,60 @@ struct BackupServiceTests {
         let restoredEntry = try #require(restoredLib.entry(for: "tmdb:movie:157336"))
         #expect(restoredEntry.status == .completed)
         #expect(restoredEntry.personalRating == 9.5)
+    }
+
+    @MainActor
+    @Test func mergeImportPreservesExistingDestinationEntriesWhileAddingNewOnes() throws {
+        let srcContainer = try PersistenceController.makeContainer(inMemory: true)
+        let srcSettings = SettingsStore(modelContext: srcContainer.mainContext)
+        let srcLib = LibraryRepository(modelContext: srcContainer.mainContext)
+        srcLib.setStatus(.planning, for: MediaItem(
+            id: "tmdb:movie:10", primarySource: .tmdb, projectType: .movie,
+            localizedTitle: "New Imported", originalTitle: "New Imported", synopsis: "",
+            releaseYear: 2025, countryOfOrigin: "US", originalLanguage: "en",
+            genres: ["Drama"], durationMinutes: 110, ratings: MultiSourceRatings()
+        ))
+        let backupData = try BackupService.exportJSON(from: srcContainer.mainContext, settings: srcSettings)
+
+        let destContainer = try PersistenceController.makeContainer(inMemory: true)
+        let destSettings = SettingsStore(modelContext: destContainer.mainContext)
+        let destLib = LibraryRepository(modelContext: destContainer.mainContext)
+        destLib.setStatus(.watching, for: MediaItem(
+            id: "anilist:anime:20", primarySource: .aniList, projectType: .anime,
+            localizedTitle: "Existing Local", originalTitle: "Existing Local", synopsis: "",
+            releaseYear: 2024, countryOfOrigin: "JP", originalLanguage: "ja",
+            genres: ["Action"], durationMinutes: 24, ratings: MultiSourceRatings()
+        ))
+
+        _ = try BackupService.importBackup(data: backupData, mode: .merge, into: destContainer.mainContext, settings: destSettings)
+        #expect(destLib.allEntries().count == 2)
+    }
+
+    @MainActor
+    @Test func rejectsCorruptedNonJSONBackupData() throws {
+        let container = try PersistenceController.makeContainer(inMemory: true)
+        let settings = SettingsStore(modelContext: container.mainContext)
+        let garbage = Data("not-valid-json".utf8)
+        #expect(throws: (any Error).self) {
+            _ = try BackupService.importBackup(data: garbage, mode: .merge, into: container.mainContext, settings: settings)
+        }
+    }
+
+    @MainActor
+    @Test func settingsStorePersistsQualitySubtitleStyleAndHomeSectionVisibility() throws {
+        let container = try PersistenceController.makeContainer(inMemory: true)
+        let settings = SettingsStore(modelContext: container.mainContext)
+
+        settings.defaultQuality = .p1080
+        settings.autoplayNext = false
+        var style = settings.subtitleStyle
+        style.fontSize = 22
+        settings.subtitleStyle = style
+
+        let reloaded = SettingsStore(modelContext: container.mainContext)
+        #expect(reloaded.defaultQuality == .p1080)
+        #expect(reloaded.autoplayNext == false)
+        #expect(reloaded.subtitleStyle.fontSize == 22)
+        #expect(!reloaded.homeSections.isEmpty)
     }
 }

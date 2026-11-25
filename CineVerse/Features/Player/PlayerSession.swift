@@ -16,6 +16,19 @@ public final class PlayerSession {
     public private(set) var nextSelection: PreWatchPlaybackSelection?
     public private(set) var alternativeSources: [VideoSourceDescriptor] = []
     public private(set) var isSwitchingSource: Bool = false
+    public var picturePreset: VideoPicturePreset = {
+        if let raw = UserDefaults.standard.string(forKey: "cv_picture_preset"),
+           let saved = VideoPicturePreset(rawValue: raw) {
+            return saved
+        }
+        return .vividCinema
+    }() {
+        didSet {
+            UserDefaults.standard.set(picturePreset.rawValue, forKey: "cv_picture_preset")
+        }
+    }
+
+    private var failedSourceIDs: Set<String> = []
 
     private let progressRepository: ProgressRepositoryProtocol
     private let libraryRepository: LibraryRepositoryProtocol
@@ -265,6 +278,21 @@ public final class PlayerSession {
             if !self.hasEvaluatedUpNext && self.nextEpisode != nil {
                 self.hasEvaluatedUpNext = true
                 self.prepareUpNext()
+            }
+        }
+
+        engine.onPlaybackFailed = { [weak self] _ in
+            guard let self else { return }
+            let failedID = self.selection.source.id
+            self.failedSourceIDs.insert(failedID)
+            if let fallback = SourceFailoverPlanner.nextFallbackSource(
+                afterFailedID: failedID,
+                triedIDs: self.failedSourceIDs,
+                candidates: self.alternativeSources
+            ) {
+                Task { @MainActor [weak self] in
+                    await self?.switchSource(to: fallback)
+                }
             }
         }
     }

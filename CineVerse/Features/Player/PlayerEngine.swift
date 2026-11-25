@@ -23,10 +23,12 @@ public final class PlayerEngine {
     public private(set) var selectedQuality: VideoQualityVariant?
     public private(set) var selectedAudioTrack: AudioTrackOption?
     public private(set) var selectedSubtitleTrack: SubtitleTrackOption?
+    public private(set) var diagnostics: PlaybackQualityDiagnostics = .empty
 
     public var isSeeking: Bool = false
     public var onTimeUpdate: ((TimeInterval, TimeInterval) -> Void)?
     public var onPlaybackEnded: (() -> Void)?
+    public var onPlaybackFailed: ((String) -> Void)?
 
     private let subtitleEngine: SubtitleEngine
     private var currentStreamURL: URL?
@@ -55,6 +57,7 @@ public final class PlayerEngine {
         currentTime = 0
         duration = 0
         bufferedTime = 0
+        diagnostics = .empty
 
         availableQualities = selection.source.availableQualities
         availableAudioTracks = selection.source.availableAudioTracks
@@ -120,12 +123,18 @@ public final class PlayerEngine {
     }
 
     public func applyQuality(_ variant: VideoQualityVariant) {
+        let previousTier = selectedQuality?.tier
         selectedQuality = variant
         guard let item = player.currentItem else { return }
 
         if currentSelection?.source.format == .hls {
             item.preferredMaximumResolution = variant.tier.preferredMaximumResolution
             item.preferredPeakBitRate = variant.tier.preferredPeakBitRate
+            if isReady && PlaybackQualityDiagnostics.shouldFlushForwardBuffer(from: previousTier, to: variant.tier) {
+                item.preferredForwardBufferDuration = 2
+                seek(to: currentTime, exact: false)
+                item.preferredForwardBufferDuration = 12
+            }
         } else if let variantURL = variant.variantStreamURL, variantURL != currentStreamURL {
             pendingStartSeek = currentTime
             replaceCurrentItem(with: variantURL)
@@ -225,9 +234,14 @@ public final class PlayerEngine {
         if let failToken = failNotificationToken { NotificationCenter.default.removeObserver(failToken) }
 
         currentStreamURL = url
+        player.automaticallyWaitsToMinimizeStalling = true
         let asset = AVURLAsset(url: url)
         let item = AVPlayerItem(asset: asset)
         item.preferredForwardBufferDuration = 12
+        if currentSelection?.source.format == .hls, let initialTier = selectedQuality?.tier {
+            item.preferredMaximumResolution = initialTier.preferredMaximumResolution
+            item.preferredPeakBitRate = initialTier.preferredPeakBitRate
+        }
 
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] playerItem, _ in
             Task { @MainActor [weak self] in
@@ -292,8 +306,10 @@ public final class PlayerEngine {
                 selectEmbeddedLegible(sub, style: currentSubtitleStyle)
             }
         case .failed:
-            errorMessage = item.error?.localizedDescription ?? "Unable to load media stream."
+            let msg = item.error?.localizedDescription ?? "Unable to load media stream."
+            errorMessage = msg
             isPlaying = false
+            onPlaybackFailed?(msg)
         case .unknown:
             break
         @unknown default:
@@ -332,6 +348,14 @@ public final class PlayerEngine {
                     if dur.isFinite && dur > 0 {
                         self.duration = dur
                     }
+                    let size = item.presentationSize
+                    let lastEvent = item.accessLog()?.events.last
+                    let bitrate = max(lastEvent?.observedBitrate ?? 0, lastEvent?.indicatedBitrate ?? 0)
+                    self.diagnostics = PlaybackQualityDiagnostics(
+                        videoWidth: Int(size.width.rounded()),
+                        videoHeight: Int(size.height.rounded()),
+                        observedBitrateBitsPerSecond: bitrate
+                    )
                 }
                 self.subtitleEngine.update(forTime: sec)
                 self.onTimeUpdate?(sec, self.duration)

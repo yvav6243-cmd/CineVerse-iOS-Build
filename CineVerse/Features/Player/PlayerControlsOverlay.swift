@@ -12,6 +12,7 @@ public struct PlayerControlsOverlay: View {
     let onUserInteraction: () -> Void
 
     private let availableRates: [Float] = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
+    @State private var showRemainingTime: Bool = false
 
     public init(
         session: PlayerSession,
@@ -228,24 +229,102 @@ public struct PlayerControlsOverlay: View {
                 }
             )
 
-            HStack {
-                Text(session.engine.currentTime.formattedPlaybackTime)
-                Text("/")
-                    .foregroundStyle(.white.opacity(0.55))
-                Text(session.engine.duration.formattedPlaybackTime)
-                    .foregroundStyle(.white.opacity(0.75))
+            HStack(spacing: CVSpacing.xs) {
+                Button {
+                    Haptics.selection()
+                    showRemainingTime.toggle()
+                    onUserInteraction()
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(session.engine.currentTime.formattedPlaybackTime)
+                            .foregroundStyle(.white)
+                        Text("/")
+                            .foregroundStyle(.white.opacity(0.5))
+                        if showRemainingTime && session.engine.duration > session.engine.currentTime {
+                            Text("-\((session.engine.duration - session.engine.currentTime).formattedPlaybackTime)")
+                                .foregroundStyle(.white.opacity(0.8))
+                        } else {
+                            Text(session.engine.duration.formattedPlaybackTime)
+                                .foregroundStyle(.white.opacity(0.8))
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
 
                 Spacer()
 
-                quickMenusRow
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(session.engine.isReady ? CVColor.success : CVColor.warning)
+                        .frame(width: 6, height: 6)
+                    Text(session.engine.diagnostics.compactSummary)
+                        .font(CVFont.micro)
+                        .foregroundStyle(.white.opacity(0.92))
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(.ultraThinMaterial, in: Capsule(style: .continuous))
             }
             .font(CVFont.caption.weight(.medium))
             .monospacedDigit()
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                quickMenusRow
+                    .padding(.vertical, 2)
+            }
         }
     }
 
     private var quickMenusRow: some View {
         HStack(spacing: CVSpacing.xs) {
+            if session.alternativeSources.count > 1 {
+                Menu {
+                    ForEach(session.alternativeSources) { src in
+                        Button {
+                            onUserInteraction()
+                            Task { await session.switchSource(to: src) }
+                        } label: {
+                            HStack {
+                                Text("\(src.providerName) (\(src.format.badgeText))")
+                                if src.id == session.selection.source.id {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    Label("Sources (\(session.alternativeSources.count))", systemImage: "play.tv")
+                        .font(CVFont.caption.weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .cvGlass(Capsule(style: .continuous), interactive: true)
+                }
+            }
+
+            if !session.engine.availableQualities.isEmpty {
+                Menu {
+                    ForEach(session.engine.availableQualities) { quality in
+                        Button {
+                            onUserInteraction()
+                            session.selectQuality(quality)
+                        } label: {
+                            HStack {
+                                Text(quality.detailedLabel)
+                                if session.engine.selectedQuality?.id == quality.id {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    Label(session.engine.selectedQuality?.tier.rawValue ?? "Auto", systemImage: "dial.high")
+                        .font(CVFont.caption.weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .cvGlass(Capsule(style: .continuous), interactive: true)
+                }
+            }
+
             Menu {
                 ForEach(availableRates, id: \.self) { rate in
                     Button {
@@ -262,8 +341,9 @@ public struct PlayerControlsOverlay: View {
                 }
             } label: {
                 Text(String(format: "%.2gx", session.engine.playbackRate))
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
+                    .font(CVFont.caption.weight(.semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
                     .cvGlass(Capsule(style: .continuous), interactive: true)
             }
 
@@ -284,7 +364,7 @@ public struct PlayerControlsOverlay: View {
                     }
                 } label: {
                     Image(systemName: "waveform")
-                        .frame(width: 32, height: 30)
+                        .frame(width: 34, height: 32)
                         .cvGlass(Capsule(style: .continuous), interactive: true)
                 }
             }
@@ -322,65 +402,54 @@ public struct PlayerControlsOverlay: View {
                 }
             } label: {
                 Image(systemName: session.engine.selectedSubtitleTrack == nil ? "captions.bubble" : "captions.bubble.fill")
-                    .frame(width: 32, height: 30)
+                    .frame(width: 34, height: 32)
                     .cvGlass(Capsule(style: .continuous), interactive: true)
             }
 
-            if session.engine.availableQualities.count > 1 {
-                Menu {
-                    ForEach(session.engine.availableQualities) { quality in
-                        Button {
-                            onUserInteraction()
-                            session.selectQuality(quality)
-                        } label: {
-                            HStack {
-                                Text(quality.detailedLabel)
-                                if session.engine.selectedQuality?.id == quality.id {
-                                    Image(systemName: "checkmark")
-                                }
+            Menu {
+                ForEach(VideoPicturePreset.allCases) { preset in
+                    Button {
+                        onUserInteraction()
+                        session.picturePreset = preset
+                    } label: {
+                        HStack {
+                            Label(preset.rawValue, systemImage: preset.symbolName)
+                            if session.picturePreset == preset {
+                                Image(systemName: "checkmark")
                             }
                         }
                     }
-                } label: {
-                    Text(session.engine.selectedQuality?.tier.rawValue ?? "Auto")
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
-                        .cvGlass(Capsule(style: .continuous), interactive: true)
                 }
-            }
-
-            Button {
-                onUserInteraction()
-                onToggleAspectFill()
             } label: {
-                Image(systemName: isAspectFill ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-                    .frame(width: 32, height: 30)
+                Image(systemName: session.picturePreset.symbolName)
+                    .frame(width: 34, height: 32)
                     .cvGlass(Capsule(style: .continuous), interactive: true)
+            }
+            .accessibilityLabel("Picture Enhancement")
+
+            Button { onUserInteraction(); onToggleAspectFill() } label: {
+                quickIconLabel(isAspectFill ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Toggle fill mode")
 
-            Button {
-                Haptics.impact(.light)
-                onToggleLock()
-            } label: {
-                Image(systemName: "lock")
-                    .frame(width: 32, height: 30)
-                    .cvGlass(Capsule(style: .continuous), interactive: true)
+            Button { Haptics.impact(.light); onToggleLock() } label: {
+                quickIconLabel("lock")
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Lock controls")
 
-            Button {
-                onUserInteraction()
-                OrientationController.shared.toggleLandscape()
-            } label: {
-                Image(systemName: "rotate.right")
-                    .frame(width: 32, height: 30)
-                    .cvGlass(Capsule(style: .continuous), interactive: true)
+            Button { onUserInteraction(); OrientationController.shared.toggleLandscape() } label: {
+                quickIconLabel("rotate.right")
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Rotate screen")
         }
+    }
+
+    private func quickIconLabel(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .frame(width: 34, height: 32)
+            .cvGlass(Capsule(style: .continuous), interactive: true)
     }
 }

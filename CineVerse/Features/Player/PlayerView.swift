@@ -14,6 +14,8 @@ public struct PlayerView: View {
     @State private var showSubtitleImporter: Bool = false
     @State private var showAddNextSourceSheet: Bool = false
     @State private var skipIndicatorText: String? = nil
+    @State private var isHoldBoostingSpeed: Bool = false
+    @State private var preHoldRate: Float = 1.0
     @State private var hideControlsTask: Task<Void, Never>?
 
     private let sourceManager: VideoSourceManager
@@ -54,6 +56,9 @@ public struct PlayerView: View {
                 ) { playerLayer in
                     session.pipController.attach(to: playerLayer)
                 }
+                .contrast(session.picturePreset.contrast)
+                .saturation(session.picturePreset.saturation)
+                .brightness(session.picturePreset.brightness)
                 .ignoresSafeArea()
 
                 gestureSurface(size: proxy.size)
@@ -63,6 +68,20 @@ public struct PlayerView: View {
                     style: settingsStore.subtitleStyle,
                     controlsVisible: controlsVisible && !isLocked
                 )
+
+                if isHoldBoostingSpeed {
+                    VStack {
+                        Label("2.0x Speed", systemImage: "forward.fill")
+                            .font(CVFont.caption.weight(.bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .cvGlass(Capsule(style: .continuous))
+                            .padding(.top, CVSpacing.lg)
+                        Spacer()
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
 
                 if let skipIndicatorText {
                     Text(skipIndicatorText)
@@ -208,6 +227,23 @@ public struct PlayerView: View {
                     scheduleAutoHide()
                 }
             }
+            .onLongPressGesture(minimumDuration: 0.45, maximumDistance: 28, pressing: { pressing in
+                guard !isLocked else { return }
+                if !pressing && isHoldBoostingSpeed {
+                    session.engine.setRate(preHoldRate)
+                    withAnimation(CVMotion.snappy) {
+                        isHoldBoostingSpeed = false
+                    }
+                }
+            }, perform: {
+                guard !isLocked, !isHoldBoostingSpeed else { return }
+                Haptics.impact(.medium)
+                preHoldRate = session.engine.playbackRate
+                session.engine.setRate(2.0)
+                withAnimation(CVMotion.snappy) {
+                    isHoldBoostingSpeed = true
+                }
+            })
     }
 
     private func errorOverlay(_ message: String) -> some View {

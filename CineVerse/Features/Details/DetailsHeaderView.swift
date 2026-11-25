@@ -55,10 +55,11 @@ public struct DetailsHeaderView: View {
                 .clipped()
                 .overlay(
                     LinearGradient(
-                        colors: [
-                            Color.black.opacity(0.18),
-                            Color.black.opacity(0.45),
-                            Color(.systemBackground).opacity(0.96)
+                        stops: [
+                            .init(color: Color.black.opacity(0.16), location: 0.0),
+                            .init(color: Color(.systemBackground).opacity(0.55), location: 0.56),
+                            .init(color: Color(.systemBackground).opacity(0.95), location: 0.84),
+                            .init(color: Color(.systemBackground), location: 1.0)
                         ],
                         startPoint: .top,
                         endPoint: .bottom

@@ -14,11 +14,23 @@ public struct CVPrimaryButtonStyle: ButtonStyle {
             .padding(.horizontal, compact ? CVSpacing.md : CVSpacing.lg)
             .padding(.vertical, compact ? CVSpacing.xs + 2 : CVSpacing.sm + 2)
             .background(
-                CVColor.iris,
+                CVColor.irisGradient,
                 in: Capsule(style: .continuous)
             )
+            .overlay(
+                Capsule(style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.32), Color.white.opacity(0.08)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: 0.75
+                    )
+            )
+            .shadow(color: CVColor.iris.opacity(configuration.isPressed ? 0.14 : 0.28), radius: 10, x: 0, y: 4)
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
-            .opacity(configuration.isPressed ? 0.9 : 1.0)
+            .opacity(configuration.isPressed ? 0.92 : 1.0)
             .animation(CVMotion.snappy, value: configuration.isPressed)
     }
 }

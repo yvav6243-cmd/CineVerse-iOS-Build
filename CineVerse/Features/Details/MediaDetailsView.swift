@@ -326,7 +326,11 @@ public struct MediaDetailsView: View {
                         Haptics.selection()
                         if let ref = similar.reference { container.coordinator.navigate(to: .details(ref)) }
                     } label: {
-                        PosterCard(item: similar, transitionNamespace: transitionNamespace, transitionID: similar.id)
+                        PosterCard(
+                            item: similar,
+                            transitionNamespace: transitionNamespace,
+                            transitionID: similar.reference?.id ?? similar.id
+                        )
                     }
                     .buttonStyle(.plain)
                 }

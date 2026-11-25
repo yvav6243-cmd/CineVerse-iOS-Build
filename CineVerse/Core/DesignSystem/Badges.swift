@@ -10,19 +10,24 @@ public struct RatingBadge: View {
     }
 
     public var body: some View {
-        if score > 0 {
+        if score.isFinite && score > 0 {
             HStack(spacing: 3) {
                 Image(systemName: "star.fill")
                     .font(.system(size: compact ? 9 : 11, weight: .bold))
                     .foregroundStyle(CVColor.ratingGold)
-                Text(String(format: "%.1f", score))
+                Text(String(format: "%.1f", min(score, 10.0)))
                     .font(compact ? CVFont.micro : CVFont.caption.weight(.bold))
                     .monospacedDigit()
                     .foregroundStyle(.primary)
+                    .fixedSize(horizontal: true, vertical: false)
             }
             .padding(.horizontal, compact ? 6 : 8)
             .padding(.vertical, compact ? 3 : 4)
             .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+            .overlay(
+                Capsule(style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
+            )
         }
     }
 }
@@ -46,6 +51,10 @@ public struct TypeBadge: View {
         .padding(.horizontal, 7)
         .padding(.vertical, 3)
         .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+        .overlay(
+            Capsule(style: .continuous)
+                .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
+        )
     }
 }
 

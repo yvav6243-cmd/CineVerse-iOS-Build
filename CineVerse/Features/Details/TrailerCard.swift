@@ -71,17 +71,17 @@ public struct TrailerCard: View {
                                 Text("Watch Trailer")
                                     .font(CVFont.cardTitle)
                                     .foregroundStyle(.white)
-                                Text("\(title) • \(trailerURL.host ?? "External Video")")
+                                Text("\(title) • CineVerse Player")
                                     .font(CVFont.caption)
-                                    .foregroundStyle(.white.opacity(0.82))
+                                    .foregroundStyle(.white.opacity(0.84))
                                     .lineLimit(1)
                             }
                             Spacer()
-                            Image(systemName: "arrow.up.right")
+                            Image(systemName: "play.tv.fill")
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(.white)
                                 .padding(8)
-                                .background(Color.white.opacity(0.18), in: Circle())
+                                .background(Color.white.opacity(0.20), in: Circle())
                         }
                         .padding(CVSpacing.md)
                     }

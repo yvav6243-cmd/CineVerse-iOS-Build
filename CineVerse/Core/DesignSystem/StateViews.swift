@@ -41,7 +41,11 @@ public struct ShimmerHeroCard: View {
     public var body: some View {
         RoundedRectangle(cornerRadius: CVRadius.panel, style: .continuous)
             .fill(Color(.tertiarySystemFill))
-            .frame(height: 360)
+            .frame(height: 380)
+            .overlay(
+                RoundedRectangle(cornerRadius: CVRadius.panel, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+            )
             .padding(.horizontal, CVSpacing.md)
             .cvShimmer(true)
     }

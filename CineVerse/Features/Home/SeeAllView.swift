@@ -83,8 +83,8 @@ public struct SeeAllView: View {
     }
 
     private func gridContent(items: [MediaItem]) -> some View {
-        let cardWidth = resolvedCardWidth
-        let columns = [GridItem(.adaptive(minimum: 150, maximum: 195), spacing: CVSpacing.sm)]
+        let cardWidth = CVGridLayoutMetrics.cardWidth(for: containerWidth)
+        let columns = CVGridLayoutMetrics.columns(for: containerWidth)
 
         return VStack(spacing: CVSpacing.lg) {
             LazyVGrid(columns: columns, spacing: CVSpacing.lg) {
@@ -122,8 +122,8 @@ public struct SeeAllView: View {
     }
 
     private var loadingGrid: some View {
-        let cardWidth = resolvedCardWidth
-        let columns = [GridItem(.adaptive(minimum: 150, maximum: 195), spacing: CVSpacing.sm)]
+        let cardWidth = CVGridLayoutMetrics.cardWidth(for: containerWidth)
+        let columns = CVGridLayoutMetrics.columns(for: containerWidth)
 
         return LazyVGrid(columns: columns, spacing: CVSpacing.lg) {
             ForEach(0..<8, id: \.self) { _ in
@@ -144,13 +144,5 @@ public struct SeeAllView: View {
             }
         }
         .padding(.horizontal, CVSpacing.md)
-    }
-
-    private var resolvedCardWidth: CGFloat {
-        guard containerWidth > 0 else { return 156 }
-        let usable = max(containerWidth - CVSpacing.md * 2, 300)
-        let columns = max(2, Int(floor((usable + CVSpacing.sm) / (150 + CVSpacing.sm))))
-        let width = floor((usable - CVSpacing.sm * CGFloat(columns - 1)) / CGFloat(columns))
-        return min(max(width, 148), 192)
     }
 }
