@@ -341,6 +341,10 @@ public struct ProfileView: View {
                 Label("Backup & Restore", systemImage: "arrow.up.arrow.down.circle")
             }
 
+            NavigationLink(value: Route.videoSources) {
+                Label("Video Sources & Providers", systemImage: "play.tv")
+            }
+
             NavigationLink(value: Route.apiKeys) {
                 Label("API Keys", systemImage: "key.fill")
             }

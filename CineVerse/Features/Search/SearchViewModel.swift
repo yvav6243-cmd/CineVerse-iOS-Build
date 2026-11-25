@@ -30,12 +30,14 @@ public final class SearchViewModel {
     public let catalogRepository: CatalogRepositoryProtocol
     private let searchHistoryRepository: SearchHistoryRepositoryProtocol
     public let settingsStore: SettingsStore
+    private let sourceManager: VideoSourceManager?
 
     public private(set) var suggestions: [String] = []
     public private(set) var matchingHistory: [SearchHistoryRecord] = []
     public private(set) var recentHistory: [SearchHistoryRecord] = []
 
     public private(set) var results: [MediaItem] = []
+    public private(set) var availabilityByMediaID: [String: ContentAvailabilitySummary] = [:]
     public private(set) var state: LoadState<[MediaItem]> = .idle
     public private(set) var isLoadingMore: Bool = false
     public private(set) var hasMore: Bool = false
@@ -45,15 +47,18 @@ public final class SearchViewModel {
 
     private var currentPage: Int = 1
     private var searchTask: Task<Void, Never>?
+    private var probeTask: Task<Void, Never>?
 
     public init(
         catalogRepository: CatalogRepositoryProtocol,
         searchHistoryRepository: SearchHistoryRepositoryProtocol,
-        settingsStore: SettingsStore
+        settingsStore: SettingsStore,
+        sourceManager: VideoSourceManager? = nil
     ) {
         self.catalogRepository = catalogRepository
         self.searchHistoryRepository = searchHistoryRepository
         self.settingsStore = settingsStore
+        self.sourceManager = sourceManager
         loadHistory()
     }
 
@@ -61,7 +66,8 @@ public final class SearchViewModel {
         self.init(
             catalogRepository: container.catalogRepository,
             searchHistoryRepository: container.searchHistoryRepository,
-            settingsStore: container.settingsStore
+            settingsStore: container.settingsStore,
+            sourceManager: container.sourceManager
         )
     }
 
@@ -167,9 +173,11 @@ public final class SearchViewModel {
             suggestionDebouncer.cancel()
             liveSearchDebouncer.cancel()
             searchTask?.cancel()
+            probeTask?.cancel()
             suggestions = []
             submittedQuery = ""
             results = []
+            availabilityByMediaID = [:]
             state = .idle
             hasMore = false
             currentPage = 1
@@ -261,6 +269,7 @@ public final class SearchViewModel {
                     self.currentPage = 1
                     self.hasMore = pageResult.hasMore && !pageResult.items.isEmpty
                     self.state = .loaded(pageResult.items)
+                    self.refreshAvailabilityProbes(for: pageResult.items)
                 }
             } catch is CancellationError {
                 if append {
@@ -279,5 +288,36 @@ public final class SearchViewModel {
             searchTask = task
         }
         await task.value
+    }
+
+    private func refreshAvailabilityProbes(for items: [MediaItem]) {
+        probeTask?.cancel()
+        let userIDs = sourceManager?.allUserPlayableMediaIDs() ?? []
+        var initialMap: [String: ContentAvailabilitySummary] = [:]
+        for item in items {
+            let quick = ContentAvailabilityResolver.quickStatus(for: item, userPlayableMediaIDs: userIDs)
+            initialMap[item.id] = ContentAvailabilitySummary(
+                status: quick,
+                canWatchInApp: quick.canWatchInApp,
+                playableSourceCount: quick.canWatchInApp ? 1 : 0,
+                officialSourceCount: item.officialPlatformLinks.count,
+                audioLanguages: quick.canWatchInApp ? [LanguageCatalog.displayName(forLanguageCode: item.originalLanguage.nilIfEmpty ?? "en")] : [],
+                highestQualityLabel: nil,
+                explanation: ""
+            )
+        }
+        availabilityByMediaID = initialMap
+
+        guard let sourceManager else { return }
+        let probeCandidates = Array(items.prefix(8))
+        probeTask = Task { [weak self] in
+            guard let self else { return }
+            for candidate in probeCandidates {
+                guard !Task.isCancelled else { return }
+                let resolved = await sourceManager.resolveAvailability(for: candidate, episode: nil, verifyReachability: false)
+                guard !Task.isCancelled else { return }
+                self.availabilityByMediaID[candidate.id] = resolved.summary
+            }
+        }
     }
 }

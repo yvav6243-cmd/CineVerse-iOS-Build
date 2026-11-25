@@ -24,6 +24,10 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
     private let aniList: AniListServiceProtocol
     private let tvMaze: TVMazeServiceProtocol
     private let iTunes: ITunesCatalogServiceProtocol
+    private let internetArchive: InternetArchiveServiceProtocol
+    private let wikidata: WikidataCatalogServiceProtocol
+    private let peerTube: PeerTubeCatalogServiceProtocol
+    private let jikan: JikanServiceProtocol
     private let cache: ResponseDiskCache
     private let playableMediaIDsProvider: (@Sendable () async -> Set<String>)?
 
@@ -34,6 +38,10 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
         aniList: AniListServiceProtocol,
         tvMaze: TVMazeServiceProtocol,
         iTunes: ITunesCatalogServiceProtocol = ITunesCatalogService(httpClient: URLSessionHTTPClient()),
+        internetArchive: InternetArchiveServiceProtocol = InternetArchiveService(httpClient: URLSessionHTTPClient()),
+        wikidata: WikidataCatalogServiceProtocol = WikidataCatalogService(httpClient: URLSessionHTTPClient()),
+        peerTube: PeerTubeCatalogServiceProtocol = PeerTubeCatalogService(httpClient: URLSessionHTTPClient()),
+        jikan: JikanServiceProtocol = JikanService(httpClient: URLSessionHTTPClient()),
         cache: ResponseDiskCache,
         playableMediaIDsProvider: (@Sendable () async -> Set<String>)? = nil
     ) {
@@ -41,6 +49,10 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
         self.aniList = aniList
         self.tvMaze = tvMaze
         self.iTunes = iTunes
+        self.internetArchive = internetArchive
+        self.wikidata = wikimediaOrDefault(wikidata)
+        self.peerTube = peerTube
+        self.jikan = jikan
         self.cache = cache
         self.playableMediaIDsProvider = playableMediaIDsProvider
     }
@@ -61,13 +73,16 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
                 items = try await fetchNewEpisodes(language: language, hasTMDB: hasTMDB)
             case .recentlyAdded:
                 items = try await fetchRecentlyAdded(language: language, hasTMDB: hasTMDB)
+            case .publicDomainAndIndie:
+                items = try await fetchPublicDomainAndIndie()
             case .trendingMovies:
                 if hasTMDB {
                     let tmdbMovies = try await tmdb.trendingMovies(page: 1, language: language)
                     items = MediaMerger.merge(iTunes.openCinemaShowcase().filter { !$0.projectType.isEpisodic } + tmdbMovies)
                 } else {
                     let charts = try await iTunes.topMovies(genreID: nil, limit: 50)
-                    items = MediaMerger.merge(iTunes.openCinemaShowcase().filter { !$0.projectType.isEpisodic } + charts)
+                    let archiveMovies = (try? await internetArchive.browseCatalog(category: .movie, page: 1, limit: 15)) ?? []
+                    items = MediaMerger.merge(iTunes.openCinemaShowcase().filter { !$0.projectType.isEpisodic } + charts + archiveMovies)
                 }
             case .popularAnime:
                 var params = AniListSearchParameters()
@@ -121,7 +136,7 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
 
         try await withThrowingTaskGroup(of: (items: [MediaItem], hasMore: Bool, excludeJa: Bool).self) { group in
             for request in requests {
-                group.addTask { [tmdb, aniList, tvMaze, iTunes] in
+                group.addTask { [tmdb, aniList, tvMaze, iTunes, internetArchive, peerTube] in
                     switch request {
                     case .tmdbMovies(let params, let exJa):
                         let res = try await tmdb.discoverMovies(params)
@@ -139,6 +154,12 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
                         let res = try await iTunes.moviesByCategory(cat, page: pg)
                         let moreAvailable = cat == .movie ? (pg < 8 && !res.isEmpty) : false
                         return (res, moreAvailable, cat == .cartoonMovie)
+                    case .internetArchive(let cat, let pg):
+                        let res = (try? await internetArchive.browseCatalog(category: cat, page: pg, limit: 16)) ?? []
+                        return (res, !res.isEmpty, false)
+                    case .peerTubeOpen(let cat, let pg):
+                        let res = (try? await peerTube.discoverOpenVideos(category: cat, page: pg, limit: 14)) ?? []
+                        return (res, !res.isEmpty, false)
                     }
                 }
             }
@@ -195,6 +216,10 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
                 params.sort = ["SEARCH_MATCH"]
                 return (try? await aniList.fetchMediaPage(params)) ?? ([], false)
             }
+            group.addTask { [internetArchive] in
+                let archiveItems = (try? await internetArchive.searchCatalog(query: trimmed, page: page, limit: 15)) ?? []
+                return (archiveItems, !archiveItems.isEmpty)
+            }
             if page == 1 {
                 group.addTask { [aniList] in
                     let entityItems = (try? await aniList.searchEntities(query: trimmed)) ?? []
@@ -207,6 +232,14 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
                 group.addTask { [tvMaze] in
                     let shows = (try? await tvMaze.searchShows(query: trimmed)) ?? []
                     return (shows, false)
+                }
+                group.addTask { [wikidata] in
+                    let wikiItems = (try? await wikidata.searchTitles(query: trimmed, language: language, limit: 10)) ?? []
+                    return (wikiItems, false)
+                }
+                group.addTask { [jikan] in
+                    let malItems = (try? await jikan.searchAnime(query: trimmed, limit: 10)) ?? []
+                    return (malItems, false)
                 }
                 if let exactYear = Int(trimmed), (1920...2030).contains(exactYear) {
                     group.addTask { [aniList] in
@@ -250,13 +283,14 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
         }()
 
         async let iTunesTask: [MediaItem] = (try? await iTunes.searchMovies(query: trimmed, limit: 6)) ?? []
+        async let wikiTask: [MediaItem] = (try? await wikidata.searchTitles(query: trimmed, language: language, limit: 5)) ?? []
 
         async let tmdbTask: [MediaItem] = {
             guard SecretsProvider.tmdbCredential() != nil else { return [] }
             return (try? await tmdb.searchMulti(query: trimmed, page: 1, language: language).items) ?? []
         }()
 
-        let combined = await tmdbTask + iTunesTask + aniTask
+        let combined = await tmdbTask + iTunesTask + aniTask + wikiTask
         var seen: Set<String> = []
         var titles: [String] = []
         for item in combined {
@@ -264,7 +298,7 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
             if seen.insert(key).inserted {
                 titles.append(item.localizedTitle)
             }
-            if titles.count >= 6 { break }
+            if titles.count >= 8 { break }
         }
         return titles
     }
@@ -307,6 +341,16 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
         }
         let fallback = try await discover(criteria: criteria, page: 1, language: language)
         return fallback.items.randomElement()
+    }
+
+    private func fetchPublicDomainAndIndie() async throws -> [MediaItem] {
+        let open = iTunes.openCinemaShowcase()
+        async let archiveFeatures: [MediaItem] = (try? await internetArchive.browseCatalog(category: .movie, page: 1, limit: 12)) ?? []
+        async let archiveShorts: [MediaItem] = (try? await internetArchive.browseCatalog(category: .shortFilm, page: 1, limit: 8)) ?? []
+        async let peerTubeItems: [MediaItem] = (try? await peerTube.discoverOpenVideos(category: .shortFilm, page: 1, limit: 10)) ?? []
+
+        let combined = await open + archiveFeatures + archiveShorts + peerTubeItems
+        return MediaMerger.merge(combined)
     }
 
     private func fetchTrendingNow(language: String, hasTMDB: Bool) async throws -> [MediaItem] {
@@ -396,4 +440,8 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
         let merged = MediaMerger.merge(await movieTop + Array(tvTop.prefix(15)) + aniTask)
         return merged.sorted { $0.displayRating > $1.displayRating }
     }
+}
+
+private func wikimediaOrDefault(_ svc: WikidataCatalogServiceProtocol) -> WikidataCatalogServiceProtocol {
+    svc
 }

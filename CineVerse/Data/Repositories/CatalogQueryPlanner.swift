@@ -6,6 +6,8 @@ public enum CatalogPlannedRequest: Sendable {
     case aniList(AniListSearchParameters)
     case tvMazeIndex(page: Int)
     case iTunesCategory(MediaProjectType, page: Int)
+    case internetArchive(MediaProjectType?, page: Int)
+    case peerTubeOpen(MediaProjectType?, page: Int)
 }
 
 public enum CatalogQueryPlanner {
@@ -18,8 +20,14 @@ public enum CatalogQueryPlanner {
         switch criteria.selectedCategory {
         case .movie:
             return hasTMDBCredential
-                ? [.tmdbMovies(makeTMDBMovieParams(criteria: criteria, page: page, language: language, withGenres: [], withoutGenres: [16, 99]), excludeJapanese: false)]
-                : [.iTunesCategory(.movie, page: page)]
+                ? [
+                    .tmdbMovies(makeTMDBMovieParams(criteria: criteria, page: page, language: language, withGenres: [], withoutGenres: [16, 99]), excludeJapanese: false),
+                    .internetArchive(.movie, page: page)
+                ]
+                : [
+                    .iTunesCategory(.movie, page: page),
+                    .internetArchive(.movie, page: page)
+                ]
 
         case .anime:
             return [.aniList(makeAniListParams(criteria: criteria, page: page, formats: ["TV", "TV_SHORT", "ONA"]))]
@@ -52,7 +60,10 @@ public enum CatalogQueryPlanner {
 
         case .cartoonMovie:
             guard hasTMDBCredential else {
-                return [.iTunesCategory(.cartoonMovie, page: page)]
+                return [
+                    .iTunesCategory(.cartoonMovie, page: page),
+                    .internetArchive(.cartoonMovie, page: page)
+                ]
             }
             return [.tmdbMovies(makeTMDBMovieParams(criteria: criteria, page: page, language: language, withGenres: [16], withoutGenres: []), excludeJapanese: true)]
 
@@ -74,13 +85,39 @@ public enum CatalogQueryPlanner {
                 return [
                     .iTunesCategory(.documentary, page: page),
                     .tvMazeIndex(page: page * 2 - 1),
-                    .tvMazeIndex(page: page * 2)
+                    .tvMazeIndex(page: page * 2),
+                    .internetArchive(.documentary, page: page)
                 ]
             }
             return [
                 .tmdbMovies(makeTMDBMovieParams(criteria: criteria, page: page, language: language, withGenres: [99], withoutGenres: []), excludeJapanese: false),
-                .tmdbTV(makeTMDBTVParams(criteria: criteria, page: page, language: language, withGenres: [99], withoutGenres: []), excludeJapanese: false)
+                .tmdbTV(makeTMDBTVParams(criteria: criteria, page: page, language: language, withGenres: [99], withoutGenres: []), excludeJapanese: false),
+                .internetArchive(.documentary, page: page)
             ]
+
+        case .shortFilm:
+            var requests: [CatalogPlannedRequest] = [
+                .internetArchive(.shortFilm, page: page),
+                .peerTubeOpen(.shortFilm, page: page)
+            ]
+            if hasTMDBCredential {
+                var p = makeTMDBMovieParams(criteria: criteria, page: page, language: language, withGenres: [], withoutGenres: [])
+                p.maxDurationMinutes = criteria.maxDurationMinutes ?? 45
+                requests.insert(.tmdbMovies(p, excludeJapanese: false), at: 0)
+            }
+            return requests
+
+        case .indieFestival:
+            var requests: [CatalogPlannedRequest] = [
+                .internetArchive(.indieFestival, page: page),
+                .peerTubeOpen(.indieFestival, page: page),
+                .iTunesCategory(.indieFestival, page: page)
+            ]
+            if hasTMDBCredential {
+                let p = makeTMDBMovieParams(criteria: criteria, page: page, language: language, withGenres: [], withoutGenres: [])
+                requests.insert(.tmdbMovies(p, excludeJapanese: false), at: 0)
+            }
+            return requests
 
         case .special:
             var requests: [CatalogPlannedRequest] = [
@@ -109,6 +146,7 @@ public enum CatalogQueryPlanner {
                 requests.append(.tvMazeIndex(page: page))
             }
             requests.append(.aniList(makeAniListParams(criteria: criteria, page: page, formats: nil)))
+            requests.append(.internetArchive(nil, page: page))
             return requests
         }
     }
@@ -129,6 +167,18 @@ public enum CatalogQueryPlanner {
                     }
                 } else if category == .special {
                     if item.projectType != .special && item.primarySource != .openCinema {
+                        return false
+                    }
+                } else if category == .shortFilm {
+                    let isShortRuntime = item.durationMinutes > 0 && item.durationMinutes <= 45 && !item.projectType.isEpisodic
+                    if item.projectType != .shortFilm && !isShortRuntime {
+                        return false
+                    }
+                } else if category == .indieFestival {
+                    let isIndie = item.projectType == .indieFestival
+                        || item.primarySource == .internetArchive
+                        || item.genres.contains { $0.localizedCaseInsensitiveContains("independent") || $0.localizedCaseInsensitiveContains("indie") }
+                    if !isIndie {
                         return false
                     }
                 } else if item.projectType != category {

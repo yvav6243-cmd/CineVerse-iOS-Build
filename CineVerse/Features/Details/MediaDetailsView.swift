@@ -61,6 +61,7 @@ public struct MediaDetailsView: View {
             trackerService: container.trackerService,
             settingsStore: container.settingsStore,
             networkMonitor: container.networkMonitor,
+            alertScheduler: container.alertScheduler,
             widgetWriter: container.widgetWriter
         ))
 
@@ -177,7 +178,12 @@ public struct MediaDetailsView: View {
         ScrollViewReader { scrollProxy in
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: CVSpacing.lg) {
-                    DetailsHeaderView(item: item, transitionID: "\(item.id):header", transitionNamespace: transitionNamespace)
+                    DetailsHeaderView(
+                        item: item,
+                        transitionID: "\(item.id):header",
+                        transitionNamespace: transitionNamespace,
+                        availabilityStatus: playbackSetupVM.effectiveAvailabilityStatus
+                    )
                     actionBar(for: item, scrollProxy: scrollProxy)
                     setupPanel(for: item)
                     RatingComparisonView(ratings: item.ratings, personalRating: viewModel.libraryEntry?.personalRating) {
@@ -188,6 +194,7 @@ public struct MediaDetailsView: View {
                     episodesBlock(for: item, scrollProxy: scrollProxy)
                     CastRailView(cast: item.cast)
                     OfficialServicesSection(links: item.officialPlatformLinks, pendingExternalURL: inAppWebURLBinding)
+                        .id("officialPlatforms")
                     personalNotesCard
                     similarProjectsSection
                 }
@@ -202,11 +209,13 @@ public struct MediaDetailsView: View {
         return DetailsActionBar(
             primaryCTATitle: cta.title,
             hasPlayableSource: playbackSetupVM.hasPlayableSource,
+            availabilityStatus: playbackSetupVM.effectiveAvailabilityStatus,
             hasTrailer: item.trailerURL != nil,
             trackingStatus: viewModel.libraryEntry?.status,
             inWatchlist: viewModel.libraryEntry?.inWatchlist ?? false,
             isFavorite: viewModel.libraryEntry?.isFavorite ?? false,
             isAllWatched: viewModel.isAllWatched,
+            alertsEnabled: viewModel.libraryEntry?.alertsEnabled ?? false,
             shareURL: viewModel.shareURL ?? reference.shareURL,
             shareTitle: item.localizedTitle,
             onPrimaryWatch: {
@@ -216,6 +225,19 @@ public struct MediaDetailsView: View {
                 if let trailerURL = item.trailerURL {
                     handleTrailerURL(trailerURL, for: item, allowSafariFallback: true)
                 }
+            },
+            onOpenOfficialPlatforms: {
+                if let firstOfficial = playbackSetupVM.officialSources.first?.officialServiceURL ?? item.officialPlatformLinks.first?.url {
+                    inAppSafariItem = InAppSafariSheetItem(url: firstOfficial)
+                } else {
+                    withAnimation(CVMotion.spring) { scrollProxy.scrollTo("officialPlatforms", anchor: .top) }
+                }
+            },
+            onOpenAddSource: {
+                addSourceContext = AddSourceContext(item: item, episode: playbackSetupVM.selectedEpisode, initialTab: .link)
+            },
+            onToggleAlerts: {
+                Task { await viewModel.toggleAvailabilityAlert() }
             },
             onAddToList: { showAddToListSheet = true },
             onMarkWatched: { viewModel.markAllWatched() },
@@ -228,6 +250,7 @@ public struct MediaDetailsView: View {
             item: item,
             viewModel: playbackSetupVM,
             startPositionSeconds: startPositionForSetup(item: item),
+            alertsEnabled: viewModel.libraryEntry?.alertsEnabled ?? false,
             onSelectEpisode: { ep in Task { await playbackSetupVM.selectEpisode(ep) } },
             onStartWatching: { container.coordinator.presentPlayer($0) },
             onOpenAddSource: { tab in
@@ -239,6 +262,9 @@ public struct MediaDetailsView: View {
                 if let trailerURL = item.trailerURL {
                     handleTrailerURL(trailerURL, for: item, allowSafariFallback: false)
                 }
+            },
+            onToggleAlerts: {
+                Task { await viewModel.toggleAvailabilityAlert() }
             }
         )
         .id("playbackSetup")

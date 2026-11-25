@@ -12,6 +12,8 @@ public final class DetailsRepository: DetailsRepositoryProtocol, @unchecked Send
     private let tvMaze: TVMazeServiceProtocol
     private let jikan: JikanServiceProtocol
     private let iTunes: ITunesCatalogServiceProtocol
+    private let internetArchive: InternetArchiveServiceProtocol
+    private let wikidata: WikidataCatalogServiceProtocol
     private let cache: ResponseDiskCache
 
     private let cacheTTL: TimeInterval = 4 * 3600
@@ -22,6 +24,8 @@ public final class DetailsRepository: DetailsRepositoryProtocol, @unchecked Send
         tvMaze: TVMazeServiceProtocol,
         jikan: JikanServiceProtocol,
         iTunes: ITunesCatalogServiceProtocol = ITunesCatalogService(httpClient: URLSessionHTTPClient()),
+        internetArchive: InternetArchiveServiceProtocol = InternetArchiveService(httpClient: URLSessionHTTPClient()),
+        wikidata: WikidataCatalogServiceProtocol = WikidataCatalogService(httpClient: URLSessionHTTPClient()),
         cache: ResponseDiskCache
     ) {
         self.tmdb = tmdb
@@ -29,6 +33,8 @@ public final class DetailsRepository: DetailsRepositoryProtocol, @unchecked Send
         self.tvMaze = tvMaze
         self.jikan = jikan
         self.iTunes = iTunes
+        self.internetArchive = internetArchive
+        self.wikidata = wikidata
         self.cache = cache
     }
 
@@ -88,8 +94,28 @@ public final class DetailsRepository: DetailsRepositoryProtocol, @unchecked Send
                 }
             case (.tvMaze, _):
                 item = try await tvMaze.showDetails(id: reference.providerID)
+            case (.internetArchive, _):
+                if let resolved = try await internetArchive.fetchDetails(identifier: reference.providerID) {
+                    item = resolved
+                } else if let offlineSnapshot {
+                    return offlineSnapshot
+                } else {
+                    throw NetworkError.invalidURL
+                }
+            case (.wikidata, _):
+                if let resolved = try await wikidata.fetchDetails(entityID: reference.providerID, language: language) {
+                    item = resolved
+                } else if let offlineSnapshot {
+                    return offlineSnapshot
+                } else {
+                    throw NetworkError.invalidURL
+                }
             case (.openCinema, _):
-                if let resolved = try await iTunes.lookupDetails(providerID: reference.providerID) {
+                if reference.providerID.hasPrefix("mal-"),
+                   let malID = Int(reference.providerID.replacingOccurrences(of: "mal-", with: "")),
+                   let malItem = try? await jikan.animeDetails(malID: malID) {
+                    item = malItem
+                } else if let resolved = try await iTunes.lookupDetails(providerID: reference.providerID) {
                     item = resolved
                 } else if let offlineSnapshot {
                     return offlineSnapshot
@@ -138,7 +164,7 @@ public final class DetailsRepository: DetailsRepositoryProtocol, @unchecked Send
             } else {
                 throw NetworkError.http(statusCode: 404, message: "Season not found")
             }
-        case .aniList, .openCinema:
+        case .aniList, .openCinema, .internetArchive, .wikidata:
             let full = try await details(for: reference, language: language, watchRegion: "US", offlineSnapshot: nil)
             if let match = full.seasons.first(where: { $0.seasonNumber == seasonNumber }) {
                 season = match

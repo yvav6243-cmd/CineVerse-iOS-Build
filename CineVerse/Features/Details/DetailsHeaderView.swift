@@ -4,17 +4,20 @@ public struct DetailsHeaderView: View {
     let item: MediaItem
     let transitionID: String
     let transitionNamespace: Namespace.ID?
+    var availabilityStatus: ContentAvailabilityStatus? = nil
 
     private let backdropHeight: CGFloat = 176
 
     public init(
         item: MediaItem,
         transitionID: String,
-        transitionNamespace: Namespace.ID? = nil
+        transitionNamespace: Namespace.ID? = nil,
+        availabilityStatus: ContentAvailabilityStatus? = nil
     ) {
         self.item = item
         self.transitionID = transitionID
         self.transitionNamespace = transitionNamespace
+        self.availabilityStatus = availabilityStatus
     }
 
     public var body: some View {
@@ -95,6 +98,10 @@ public struct DetailsHeaderView: View {
                 StatusBadge(releaseStatus: item.releaseStatus)
             }
 
+            if let availabilityStatus {
+                AvailabilityBadge(status: availabilityStatus, compact: true)
+            }
+
             Text(item.localizedTitle)
                 .font(CVFont.pageTitle)
                 .foregroundStyle(.primary)
@@ -143,7 +150,9 @@ public struct DetailsHeaderView: View {
 
     private var metadataSegments: [String] {
         var parts: [String] = []
-        if item.releaseYear > 0 {
+        if let relDate = item.releaseDate, relDate > Date() {
+            parts.append("Premiere: \(CineVerseDateFormatters.mediumDisplay.string(from: relDate))")
+        } else if item.releaseYear > 0 {
             parts.append(String(item.releaseYear))
         }
         if !item.countryOfOrigin.isEmpty {

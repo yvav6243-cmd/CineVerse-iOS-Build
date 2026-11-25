@@ -12,6 +12,8 @@ public enum MediaProjectType: String, Codable, CaseIterable, Identifiable, Senda
     case cartoonMovie = "Cartoons"
     case drama = "Dramas"
     case documentary = "Documentaries"
+    case shortFilm = "Short Films"
+    case indieFestival = "Indie & Festival"
     case special = "Specials"
     case other = "Other Projects"
 
@@ -27,6 +29,8 @@ public enum MediaProjectType: String, Codable, CaseIterable, Identifiable, Senda
         case .cartoonMovie: return "Animated Film"
         case .drama: return "Drama"
         case .documentary: return "Documentary"
+        case .shortFilm: return "Short Film"
+        case .indieFestival: return "Indie & Festival"
         case .special: return "Special"
         case .other: return "Video Project"
         }
@@ -42,6 +46,8 @@ public enum MediaProjectType: String, Codable, CaseIterable, Identifiable, Senda
         case .cartoonMovie: return "Cartoons"
         case .drama: return "Dramas"
         case .documentary: return "Documentaries"
+        case .shortFilm: return "Short Films"
+        case .indieFestival: return "Indie & Festival"
         case .special: return "Specials"
         case .other: return "Other Projects"
         }
@@ -57,6 +63,8 @@ public enum MediaProjectType: String, Codable, CaseIterable, Identifiable, Senda
         case .cartoonMovie: return "theatermasks"
         case .drama: return "heart.text.square"
         case .documentary: return "globe.desk"
+        case .shortFilm: return "film"
+        case .indieFestival: return "laurel.leading"
         case .special: return "star.square.on.square"
         case .other: return "play.rectangle.on.rectangle"
         }
@@ -66,7 +74,7 @@ public enum MediaProjectType: String, Codable, CaseIterable, Identifiable, Senda
         switch self {
         case .anime, .tvSeries, .cartoonSeries, .drama:
             return true
-        case .movie, .animeMovie, .cartoonMovie, .documentary, .special, .other:
+        case .movie, .animeMovie, .cartoonMovie, .documentary, .shortFilm, .indieFestival, .special, .other:
             return false
         }
     }
@@ -101,6 +109,71 @@ public enum MetadataProviderSource: String, Codable, CaseIterable, Sendable {
     case aniList = "AniList"
     case tvMaze = "TVmaze"
     case openCinema = "CineVerse Open Catalog"
+    case internetArchive = "Internet Archive"
+    case wikidata = "Wikidata Global"
+}
+
+// MARK: - Content Availability Status
+
+public enum ContentAvailabilityStatus: String, Codable, CaseIterable, Identifiable, Sendable {
+    case availableToWatch = "Available to Watch"
+    case officialStreaming = "Official Streaming"
+    case publicDomain = "Public Domain"
+    case userProvided = "User Provided"
+    case comingSoon = "Coming Soon"
+    case notYetReleased = "Not Yet Released"
+    case trailerOnly = "Trailer Only"
+    case informationOnly = "Information Only"
+
+    public var id: String { rawValue }
+
+    public var canWatchInApp: Bool {
+        switch self {
+        case .availableToWatch, .publicDomain, .userProvided:
+            return true
+        case .officialStreaming, .comingSoon, .notYetReleased, .trailerOnly, .informationOnly:
+            return false
+        }
+    }
+
+    public var shortBadge: String {
+        switch self {
+        case .availableToWatch: return "Watch Now"
+        case .officialStreaming: return "Official"
+        case .publicDomain: return "Public Domain"
+        case .userProvided: return "Your Source"
+        case .comingSoon: return "Coming Soon"
+        case .notYetReleased: return "Unreleased"
+        case .trailerOnly: return "Trailer Only"
+        case .informationOnly: return "Info Only"
+        }
+    }
+
+    public var symbolName: String {
+        switch self {
+        case .availableToWatch: return "play.circle.fill"
+        case .officialStreaming: return "arrow.up.right.square"
+        case .publicDomain: return "building.columns.fill"
+        case .userProvided: return "person.crop.circle.badge.checkmark"
+        case .comingSoon: return "calendar.badge.clock"
+        case .notYetReleased: return "clock.badge.questionmark"
+        case .trailerOnly: return "film"
+        case .informationOnly: return "info.circle"
+        }
+    }
+
+    public var accentHex: String {
+        switch self {
+        case .availableToWatch: return "#30D158"
+        case .officialStreaming: return "#0A84FF"
+        case .publicDomain: return "#14B8A6"
+        case .userProvided: return "#6E5BFF"
+        case .comingSoon: return "#FF9F0A"
+        case .notYetReleased: return "#AF52DE"
+        case .trailerOnly: return "#FF6482"
+        case .informationOnly: return "#8E8E93"
+        }
+    }
 }
 
 // MARK: - Multi-Provider Rating Snapshot

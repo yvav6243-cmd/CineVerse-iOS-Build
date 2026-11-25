@@ -29,6 +29,15 @@ public enum PlayableCatalogEvaluator {
             )
         }
 
+        if item.primarySource == .internetArchive || item.externalIDs[.internetArchive] != nil {
+            return PlayableSourceCapabilities(
+                isPlayable: true,
+                highestTier: .p720,
+                audioLanguages: [item.originalLanguage.lowercased().nilIfEmpty ?? "en"],
+                voiceoverKinds: [.original]
+            )
+        }
+
         let openStreams = OpenCinemaLibrary.streams(forItemID: item.id)
         let hasDirectEpisodes = item.seasons.contains { season in
             season.episodes.contains { $0.directStreamURL != nil }
@@ -87,6 +96,16 @@ public enum PlayableCatalogEvaluator {
                     || $0.roleOrCharacter.normalizedForComparison.contains(needle)
             }
             if !matchesDirector && !matchesStudio && !matchesCastOrChar {
+                return false
+            }
+        }
+
+        if let availabilityStatus = criteria.availabilityStatus {
+            let resolvedStatus = ContentAvailabilityResolver.quickStatus(
+                for: item,
+                userPlayableMediaIDs: userPlayableMediaIDs
+            )
+            if resolvedStatus != availabilityStatus {
                 return false
             }
         }

@@ -97,6 +97,15 @@ public final class ITunesCatalogService: ITunesCatalogServiceProtocol, @unchecke
         case .drama:
             guard page == 1 else { return [] }
             return try await fetchChartMovies(genreID: 4406, limit: 80, forcedProjectType: .drama)
+        case .shortFilm:
+            guard page == 1 else { return [] }
+            return openCinemaShowcase().filter { $0.projectType == .shortFilm || $0.durationMinutes <= 30 }
+        case .indieFestival:
+            guard page == 1 else { return [] }
+            let openIndie = openCinemaShowcase().filter { $0.projectType == .indieFestival || $0.durationMinutes <= 30 }
+            let indie = (try? await fetchChartMovies(genreID: 4409, limit: 60, forcedProjectType: .indieFestival)) ?? []
+            let classics = (try? await fetchChartMovies(genreID: 4403, limit: 40, forcedProjectType: .indieFestival)) ?? []
+            return openIndie + indie + classics
         case .special:
             return page == 1 ? openCinemaShowcase() : []
         case .movie:

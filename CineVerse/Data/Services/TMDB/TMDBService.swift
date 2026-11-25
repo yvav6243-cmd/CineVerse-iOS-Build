@@ -253,7 +253,7 @@ public final class TMDBService: TMDBServiceProtocol, @unchecked Sendable {
             items.append(URLQueryItem(name: "vote_average.lte", value: String(format: "%.1f", maxRating)))
         }
         if params.sortBy.hasPrefix("vote_average") {
-            items.append(URLQueryItem(name: "vote_count.gte", value: "50"))
+            items.append(URLQueryItem(name: "vote_count.gte", value: "5"))
         }
         if let maxRuntime = params.maxDurationMinutes {
             items.append(URLQueryItem(name: "with_runtime.lte", value: String(maxRuntime)))

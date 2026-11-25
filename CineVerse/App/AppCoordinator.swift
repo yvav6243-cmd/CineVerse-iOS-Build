@@ -20,6 +20,7 @@ public enum Route: Hashable, Sendable {
     case subtitleStyle
     case storage
     case backup
+    case videoSources
     case apiKeys
     case about
 }

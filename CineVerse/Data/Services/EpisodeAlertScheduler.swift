@@ -27,6 +27,16 @@ public final class EpisodeAlertScheduler {
         }
     }
 
+    public func enableWatchAvailabilityAlert(for item: MediaItem) async -> Bool {
+        _ = libraryRepository.upsert(from: item)
+        libraryRepository.setAlertsEnabled(true, mediaID: item.id)
+        let granted = await requestAuthorization()
+        if granted {
+            await syncScheduledAlerts()
+        }
+        return granted
+    }
+
     public func syncScheduledAlerts() async {
         let settings = await center.notificationSettings()
         guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
@@ -35,13 +45,13 @@ public final class EpisodeAlertScheduler {
 
         let allEntries = libraryRepository.allEntries()
         let tracked = allEntries.filter { entry in
-            let activeStatus = entry.status == .watching || entry.status == .planning || entry.status == .rewatching
+            let activeStatus = entry.status == .watching || entry.status == .planning || entry.status == .rewatching || entry.alertsEnabled
             let wantsAlerts = entry.alertsEnabled || settingsStore.episodeAlertsEnabled
-            return activeStatus && wantsAlerts && entry.projectType.isEpisodic
+            return activeStatus && wantsAlerts
         }
 
         let pending = await center.pendingNotificationRequests()
-        let cineVersePendingIDs = pending.map(\.identifier).filter { $0.hasPrefix("episode-") }
+        let cineVersePendingIDs = pending.map(\.identifier).filter { $0.hasPrefix("episode-") || $0.hasPrefix("release-") }
         center.removePendingNotificationRequests(withIdentifiers: cineVersePendingIDs)
 
         guard !tracked.isEmpty else { return }
@@ -58,35 +68,42 @@ public final class EpisodeAlertScheduler {
                 offlineSnapshot: entry.snapshot
             )
 
-            guard let airDate = details?.nextAiringDate, airDate > Date() else { continue }
+            if entry.projectType.isEpisodic,
+               let airDate = details?.nextAiringDate,
+               airDate > Date() {
+                let episodeNum = details?.nextAiringEpisodeNumber ?? 1
+                let content = UNMutableNotificationContent()
+                content.title = entry.title
+                content.body = "Episode \(episodeNum) airs today."
+                content.sound = .default
+                content.userInfo = ["deepLink": "cineverse://media/\(entry.mediaID)"]
 
-            let episodeNum = details?.nextAiringEpisodeNumber ?? 1
-            let content = UNMutableNotificationContent()
-            content.title = entry.title
-            content.body = "Episode \(episodeNum) airs today."
-            content.sound = .default
-            content.userInfo = ["deepLink": "cineverse://media/\(entry.mediaID)"]
-
-            let components = Calendar.current.dateComponents(
-                [.year, .month, .day, .hour, .minute],
-                from: airDate
-            )
-            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-            let identifier = "episode-\(entry.mediaID)-\(episodeNum)"
-            let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
-
-            do {
-                try await center.add(request)
+                let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: airDate)
+                let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+                let request = UNNotificationRequest(identifier: "episode-\(entry.mediaID)-\(episodeNum)", content: content, trigger: trigger)
+                try? await center.add(request)
                 scheduledCount += 1
-            } catch {
-                CVLogger.notifications.error("Failed scheduling alert: \(error.localizedDescription, privacy: .public)")
+            } else if entry.alertsEnabled,
+                      let releaseDate = details?.releaseDate ?? entry.snapshot?.releaseDate,
+                      releaseDate > Date() {
+                let content = UNMutableNotificationContent()
+                content.title = entry.title
+                content.body = "Now released — check CineVerse for streaming or video sources."
+                content.sound = .default
+                content.userInfo = ["deepLink": "cineverse://media/\(entry.mediaID)"]
+
+                let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: releaseDate)
+                let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+                let request = UNNotificationRequest(identifier: "release-\(entry.mediaID)", content: content, trigger: trigger)
+                try? await center.add(request)
+                scheduledCount += 1
             }
         }
     }
 
     public func clearAllScheduledAlerts() async {
         let pending = await center.pendingNotificationRequests()
-        let ids = pending.map(\.identifier).filter { $0.hasPrefix("episode-") }
+        let ids = pending.map(\.identifier).filter { $0.hasPrefix("episode-") || $0.hasPrefix("release-") }
         center.removePendingNotificationRequests(withIdentifiers: ids)
     }
 }

@@ -63,7 +63,7 @@ struct CatalogQueryPlannerTests {
             language: "en-US",
             hasTMDBCredential: false
         )
-        #expect(movieReqs.count == 1)
+        #expect(movieReqs.count == 2)
         if case .iTunesCategory(let cat, let page) = movieReqs.first {
             #expect(cat == .movie)
             #expect(page == 2)
@@ -79,7 +79,7 @@ struct CatalogQueryPlannerTests {
             language: "en-US",
             hasTMDBCredential: false
         )
-        #expect(cartoonReqs.count == 1)
+        #expect(cartoonReqs.count == 2)
         if case .iTunesCategory(let cat, _) = cartoonReqs.first {
             #expect(cat == .cartoonMovie)
         } else {
@@ -102,17 +102,35 @@ struct CatalogQueryPlannerTests {
             language: "en-US",
             hasTMDBCredential: false
         )
-        #expect(docReqs.count == 3)
+        #expect(docReqs.count == 4)
     }
 
-    @Test func plansCombinedMovieTVAndAnimeForAllCategoriesWithoutTMDB() {
+    @Test func plansCombinedMovieTVAnimeAndArchiveForAllCategoriesWithoutTMDB() {
         let allReqs = CatalogQueryPlanner.planRequests(
             criteria: CatalogFilterCriteria(selectedCategory: nil),
             page: 1,
             language: "en-US",
             hasTMDBCredential: false
         )
-        #expect(allReqs.count == 3)
+        #expect(allReqs.count == 4)
+    }
+
+    @Test func plansShortFilmAndIndieFestivalRequestsWithoutTMDB() {
+        let shortReqs = CatalogQueryPlanner.planRequests(
+            criteria: CatalogFilterCriteria(selectedCategory: .shortFilm),
+            page: 1,
+            language: "en-US",
+            hasTMDBCredential: false
+        )
+        #expect(shortReqs.count == 2)
+
+        let indieReqs = CatalogQueryPlanner.planRequests(
+            criteria: CatalogFilterCriteria(selectedCategory: .indieFestival),
+            page: 1,
+            language: "en-US",
+            hasTMDBCredential: false
+        )
+        #expect(indieReqs.count == 3)
     }
 
     @Test func plansSpecialCategoryIncludingOpenCinemaOnFirstPageOnly() {

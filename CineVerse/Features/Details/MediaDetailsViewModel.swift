@@ -46,6 +46,7 @@ public final class MediaDetailsViewModel {
     private let trackerService: TrackerService
     private let settingsStore: SettingsStore
     private let networkMonitor: NetworkMonitor
+    private let alertScheduler: EpisodeAlertScheduler?
     private let widgetWriter: WidgetSnapshotWriter?
 
     public init(
@@ -57,6 +58,7 @@ public final class MediaDetailsViewModel {
         trackerService: TrackerService,
         settingsStore: SettingsStore,
         networkMonitor: NetworkMonitor,
+        alertScheduler: EpisodeAlertScheduler? = nil,
         widgetWriter: WidgetSnapshotWriter? = nil
     ) {
         self.reference = reference
@@ -67,6 +69,7 @@ public final class MediaDetailsViewModel {
         self.trackerService = trackerService
         self.settingsStore = settingsStore
         self.networkMonitor = networkMonitor
+        self.alertScheduler = alertScheduler
         self.widgetWriter = widgetWriter
         self.shareURL = reference.shareURL
     }
@@ -334,6 +337,22 @@ public final class MediaDetailsViewModel {
         _ = libraryRepository.upsert(from: item)
         libraryRepository.setAlertsEnabled(enabled, mediaID: item.id)
         refreshLocalState()
+    }
+
+    public func toggleAvailabilityAlert() async {
+        guard let item else { return }
+        let currentlyEnabled = libraryEntry?.alertsEnabled ?? false
+        if currentlyEnabled {
+            setAlertsEnabled(false)
+            await alertScheduler?.syncScheduledAlerts()
+        } else {
+            if let alertScheduler {
+                _ = await alertScheduler.enableWatchAvailabilityAlert(for: item)
+                refreshLocalState()
+            } else {
+                setAlertsEnabled(true)
+            }
+        }
     }
 
     public func updateShareURL() {

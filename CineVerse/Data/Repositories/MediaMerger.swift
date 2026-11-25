@@ -33,6 +33,9 @@ public enum MediaMerger {
         rawTitles = rawTitles.map { $0.normalizedForComparison }.filter { !$0.isEmpty }
 
         var keys: [String] = ["id|\(item.id)"]
+        for (source, extID) in item.externalIDs where !extID.isEmpty {
+            keys.append("ext|\(source.rawValue)|\(extID.lowercased())")
+        }
         for norm in Set(rawTitles) {
             keys.append("\(kindGroup)|\(norm)|\(yearPart)")
         }
@@ -40,16 +43,17 @@ public enum MediaMerger {
     }
 
     private static func combine(_ first: MediaItem, with second: MediaItem) -> MediaItem {
-        let preferSecond: Bool
-        if first.primarySource == .openCinema && second.primarySource != .openCinema {
-            preferSecond = false
-        } else if second.primarySource == .openCinema && first.primarySource != .openCinema {
-            preferSecond = true
-        } else if second.projectType == .anime || second.projectType == .animeMovie {
-            preferSecond = second.primarySource == .aniList && first.primarySource != .aniList
-        } else {
-            preferSecond = second.primarySource == .tmdb && first.primarySource != .tmdb
+        let rank: (MediaItem) -> Int = { item in
+            switch item.primarySource {
+            case .openCinema: return 6
+            case .tmdb: return 5
+            case .aniList: return (item.projectType == .anime || item.projectType == .animeMovie) ? 6 : 4
+            case .tvMaze: return item.projectType.isEpisodic ? 4 : 3
+            case .internetArchive: return 2
+            case .wikidata: return 1
+            }
         }
+        let preferSecond = rank(second) > rank(first)
 
         let primary = preferSecond ? second : first
         let secondary = preferSecond ? first : second

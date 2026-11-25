@@ -45,6 +45,7 @@ public enum HomeSectionType: String, Codable, CaseIterable, Identifiable, Sendab
     case popularTVShows = "Popular TV Shows"
     case newEpisodes = "New Episodes"
     case recentlyAdded = "Recently Added"
+    case publicDomainAndIndie = "Public Domain & Indie"
     case recommendedForYou = "Recommended For You"
     case upcomingReleases = "Upcoming Releases"
     case topRated = "Top Rated"
@@ -66,6 +67,7 @@ public enum HomeSectionType: String, Codable, CaseIterable, Identifiable, Sendab
         case .continueWatching: return "Pick up right where you left off"
         case .trendingNow: return "Full-length 4K/HD cinema & top hits right now"
         case .recentlyAdded: return "Fresh arrivals across catalogs"
+        case .publicDomainAndIndie: return "Free legal classics, short films & indie cinema"
         case .trendingMovies: return "Most watched cinema right now"
         case .popularAnime: return "Top seasonal & all-time anime series"
         case .popularTVShows: return "Critically acclaimed television"
@@ -83,6 +85,7 @@ public enum HomeSectionType: String, Codable, CaseIterable, Identifiable, Sendab
         case .continueWatching: return "play.tv"
         case .trendingNow: return "bolt.fill"
         case .recentlyAdded: return "sparkles.rectangle.stack"
+        case .publicDomainAndIndie: return "building.columns.fill"
         case .trendingMovies: return "flame.fill"
         case .popularAnime: return "sparkles.tv"
         case .popularTVShows: return "tv.fill"
@@ -157,6 +160,7 @@ public struct CatalogFilterCriteria: Codable, Hashable, Sendable {
     public var requiredVoiceoverKind: AudioVoiceoverKind?
     public var minimumVideoQuality: VideoQualityTier?
     public var personOrStudioQuery: String?
+    public var availabilityStatus: ContentAvailabilityStatus?
 
     public init(
         selectedCategory: MediaProjectType? = nil,
@@ -176,7 +180,8 @@ public struct CatalogFilterCriteria: Codable, Hashable, Sendable {
         requiredAudioLanguage: String? = nil,
         requiredVoiceoverKind: AudioVoiceoverKind? = nil,
         minimumVideoQuality: VideoQualityTier? = nil,
-        personOrStudioQuery: String? = nil
+        personOrStudioQuery: String? = nil,
+        availabilityStatus: ContentAvailabilityStatus? = nil
     ) {
         self.selectedCategory = selectedCategory
         self.selectedGenres = selectedGenres
@@ -196,6 +201,7 @@ public struct CatalogFilterCriteria: Codable, Hashable, Sendable {
         self.requiredVoiceoverKind = requiredVoiceoverKind
         self.minimumVideoQuality = minimumVideoQuality
         self.personOrStudioQuery = personOrStudioQuery
+        self.availabilityStatus = availabilityStatus
     }
 
     public var activeFilterCount: Int {
@@ -214,6 +220,7 @@ public struct CatalogFilterCriteria: Codable, Hashable, Sendable {
         if requiredAudioLanguage != nil { count += 1 }
         if requiredVoiceoverKind != nil { count += 1 }
         if minimumVideoQuality != nil { count += 1 }
+        if availabilityStatus != nil { count += 1 }
         if let pq = personOrStudioQuery, !pq.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { count += 1 }
         return count
     }
@@ -237,6 +244,7 @@ public struct CatalogFilterCriteria: Codable, Hashable, Sendable {
         requiredVoiceoverKind = nil
         minimumVideoQuality = nil
         personOrStudioQuery = nil
+        availabilityStatus = nil
     }
 }
 

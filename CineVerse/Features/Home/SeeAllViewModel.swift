@@ -34,7 +34,7 @@ public final class SeeAllViewModel {
     public var supportsPagination: Bool {
         switch section {
         case .trendingNow, .newEpisodes, .trendingMovies, .popularAnime, .popularTVShows,
-             .upcomingReleases, .topRated, .recentlyAdded:
+             .upcomingReleases, .topRated, .recentlyAdded, .publicDomainAndIndie:
             return true
         case .continueWatching, .recentlyWatched, .yourFavorites, .recommendedForYou:
             return false
@@ -169,6 +169,8 @@ public final class SeeAllViewModel {
             return CatalogFilterCriteria(sortBy: .rating)
         case .recentlyAdded:
             return CatalogFilterCriteria(sortBy: .recentlyAdded)
+        case .publicDomainAndIndie:
+            return CatalogFilterCriteria(sortBy: .popularity, availabilityStatus: .publicDomain)
         case .upcomingReleases:
             return CatalogFilterCriteria(releaseStatus: .upcoming, sortBy: .popularity)
         case .continueWatching, .recentlyWatched, .yourFavorites, .recommendedForYou:

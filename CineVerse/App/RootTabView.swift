@@ -123,6 +123,8 @@ public struct RootTabView: View {
             StorageManagementView(responseCache: container.responseCache)
         case .backup:
             BackupView(container: container)
+        case .videoSources:
+            ManageSourcesView(sourceManager: container.sourceManager, httpClient: container.httpClient)
         case .apiKeys:
             APIKeysView(tmdbService: container.tmdbService)
         case .about:

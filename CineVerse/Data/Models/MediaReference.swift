@@ -49,6 +49,10 @@ public struct MediaReference: Hashable, Codable, Sendable {
                 return URL(string: "https://itunes.apple.com/us/movie/id\(idDigits)")
             }
             return nil
+        case .internetArchive:
+            return URL(string: "https://archive.org/details/\(providerID)")
+        case .wikidata:
+            return URL(string: "https://www.wikidata.org/wiki/\(providerID)")
         }
     }
 
@@ -58,6 +62,8 @@ public struct MediaReference: Hashable, Codable, Sendable {
         case .aniList: return "anilist"
         case .tvMaze: return "tvmaze"
         case .openCinema: return "opencinema"
+        case .internetArchive: return "archive"
+        case .wikidata: return "wikidata"
         }
     }
 
@@ -67,6 +73,8 @@ public struct MediaReference: Hashable, Codable, Sendable {
         case "anilist": return .aniList
         case "tvmaze": return .tvMaze
         case "opencinema": return .openCinema
+        case "archive": return .internetArchive
+        case "wikidata": return .wikidata
         default: return nil
         }
     }
@@ -83,7 +91,7 @@ public extension MediaItem {
             kind = .anime
         case .tvMaze:
             kind = .tv
-        case .tmdb, .openCinema:
+        case .tmdb, .openCinema, .internetArchive, .wikidata:
             kind = projectType.isEpisodic ? .tv : .movie
         }
         let rawID = externalIDs[primarySource] ?? id

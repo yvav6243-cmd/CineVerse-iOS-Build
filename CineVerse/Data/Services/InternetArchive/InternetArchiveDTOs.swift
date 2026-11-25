@@ -10,8 +10,8 @@ public enum IAFlexibleStringOrInt: Decodable, Sendable {
             self = .int(intVal)
         } else if let strVal = try? container.decode(String.self) {
             self = .string(strVal)
-        } else if let arrayVal = try? container.decode([String].self), let first = arrayVal.first {
-            self = .string(first)
+        } else if let arrayVal = try? container.decode([String].self) {
+            self = .string(arrayVal.joined(separator: ", "))
         } else {
             self = .string("")
         }
@@ -30,6 +30,14 @@ public enum IAFlexibleStringOrInt: Decodable, Sendable {
         case .string(let text): return text
         }
     }
+
+    public var stringListValue: [String] {
+        switch self {
+        case .int(let value): return [String(value)]
+        case .string(let text):
+            return text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        }
+    }
 }
 
 public struct IAArchiveSearchResponseDTO: Decodable, Sendable {
@@ -44,10 +52,31 @@ public struct IAArchiveSearchDocDTO: Decodable, Sendable {
     public let identifier: String
     public let title: IAFlexibleStringOrInt?
     public let year: IAFlexibleStringOrInt?
+    public let description: IAFlexibleStringOrInt?
+    public let creator: IAFlexibleStringOrInt?
+    public let subject: IAFlexibleStringOrInt?
+    public let mediatype: String?
+    public let downloads: IAFlexibleStringOrInt?
+    public let collection: IAFlexibleStringOrInt?
+    public let runtime: IAFlexibleStringOrInt?
+    public let language: IAFlexibleStringOrInt?
 }
 
 public struct IAMetadataResponseDTO: Decodable, Sendable {
     public let files: [IAFileDTO]?
+    public let metadata: IAMetadataBodyDTO?
+}
+
+public struct IAMetadataBodyDTO: Decodable, Sendable {
+    public let title: IAFlexibleStringOrInt?
+    public let description: IAFlexibleStringOrInt?
+    public let creator: IAFlexibleStringOrInt?
+    public let year: IAFlexibleStringOrInt?
+    public let date: IAFlexibleStringOrInt?
+    public let runtime: IAFlexibleStringOrInt?
+    public let language: IAFlexibleStringOrInt?
+    public let subject: IAFlexibleStringOrInt?
+    public let collection: IAFlexibleStringOrInt?
 }
 
 public struct IAFileDTO: Decodable, Sendable {
@@ -56,4 +85,5 @@ public struct IAFileDTO: Decodable, Sendable {
     public let height: IAFlexibleStringOrInt?
     public let width: IAFlexibleStringOrInt?
     public let size: IAFlexibleStringOrInt?
+    public let length: IAFlexibleStringOrInt?
 }

@@ -18,6 +18,17 @@ public final class PlaybackSetupViewModel {
     public private(set) var isResolving: Bool = false
     public private(set) var isInspecting: Bool = false
     public private(set) var subtitleImportError: String?
+    public private(set) var availabilitySummary: ContentAvailabilitySummary?
+
+    public var effectiveAvailabilityStatus: ContentAvailabilityStatus {
+        if let summary = availabilitySummary {
+            return summary.status
+        }
+        if let mediaItem {
+            return ContentAvailabilityResolver.quickStatus(for: mediaItem)
+        }
+        return .informationOnly
+    }
 
     private let sourceManager: VideoSourceManager
     private let libraryRepository: LibraryRepositoryProtocol
@@ -70,6 +81,7 @@ public final class PlaybackSetupViewModel {
         allSources = resolved
         playableSources = resolved.filter { $0.isAvailable && $0.format.isDirectlyPlayable }
         officialSources = resolved.filter { $0.format == .externalOfficialService }
+        availabilitySummary = ContentAvailabilityResolver.resolve(item: item, sources: resolved)
         isResolving = false
 
         let entry = libraryRepository.entry(for: item.id)
@@ -98,6 +110,7 @@ public final class PlaybackSetupViewModel {
             allSources = verified
             let healthyPlayable = verified.filter { $0.isAvailable && $0.format.isDirectlyPlayable }
             playableSources = healthyPlayable
+            availabilitySummary = ContentAvailabilityResolver.resolve(item: item, sources: verified)
             if let currentSel = selectedSource, !healthyPlayable.contains(where: { $0.id == currentSel.id }) {
                 if let fallback = healthyPlayable.first {
                     await selectSource(fallback, entry: entry)

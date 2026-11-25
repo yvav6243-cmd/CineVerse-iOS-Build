@@ -17,6 +17,8 @@ public final class AppContainer {
     public let iTunesService: ITunesCatalogServiceProtocol
     public let wikimediaService: WikimediaCinemaServiceProtocol
     public let internetArchiveService: InternetArchiveServiceProtocol
+    public let wikidataService: WikidataCatalogServiceProtocol
+    public let peerTubeService: PeerTubeCatalogServiceProtocol
 
     public let catalogRepository: CatalogRepositoryProtocol
     public let detailsRepository: DetailsRepositoryProtocol
@@ -49,13 +51,34 @@ public final class AppContainer {
         self.iTunesService = ITunesCatalogService(httpClient: httpClient)
         self.wikimediaService = WikimediaCinemaService(httpClient: httpClient)
         self.internetArchiveService = InternetArchiveService(httpClient: httpClient)
+        let wdService = WikidataCatalogService(httpClient: httpClient)
+        self.wikidataService = wdService
+        let ptService = PeerTubeCatalogService(httpClient: httpClient)
+        self.peerTubeService = ptService
+
+        let srcManager = VideoSourceManager(
+            modelContext: context,
+            httpClient: httpClient,
+            internetArchiveService: internetArchiveService,
+            iTunesService: iTunesService,
+            wikimediaService: wikimediaService,
+            peerTubeService: ptService
+        )
+        self.sourceManager = srcManager
 
         self.catalogRepository = CatalogRepository(
             tmdb: tmdbService,
             aniList: aniListService,
             tvMaze: tvMazeService,
             iTunes: iTunesService,
-            cache: responseCache
+            internetArchive: internetArchiveService,
+            wikidata: wdService,
+            peerTube: ptService,
+            jikan: jikanService,
+            cache: responseCache,
+            playableMediaIDsProvider: { @MainActor in
+                srcManager.allUserPlayableMediaIDs()
+            }
         )
         self.detailsRepository = DetailsRepository(
             tmdb: tmdbService,
@@ -63,6 +86,8 @@ public final class AppContainer {
             tvMaze: tvMazeService,
             jikan: jikanService,
             iTunes: iTunesService,
+            internetArchive: internetArchiveService,
+            wikidata: wdService,
             cache: responseCache
         )
         self.calendarRepository = CalendarRepository(
@@ -81,13 +106,6 @@ public final class AppContainer {
         let settings = SettingsStore(modelContext: context)
         self.settingsStore = settings
 
-        self.sourceManager = VideoSourceManager(
-            modelContext: context,
-            httpClient: httpClient,
-            internetArchiveService: internetArchiveService,
-            iTunesService: iTunesService,
-            wikimediaService: wikimediaService
-        )
         self.trackerService = TrackerService(
             libraryRepository: libRepo,
             progressRepository: progRepo

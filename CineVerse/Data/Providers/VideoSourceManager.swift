@@ -17,6 +17,7 @@ public final class VideoSourceManager {
         internetArchiveService: InternetArchiveServiceProtocol,
         iTunesService: ITunesCatalogServiceProtocol = ITunesCatalogService(httpClient: URLSessionHTTPClient()),
         wikimediaService: WikimediaCinemaServiceProtocol? = nil,
+        peerTubeService: PeerTubeCatalogServiceProtocol? = nil,
         videoStore: LocalVideoStore = .shared
     ) {
         self.modelContext = modelContext
@@ -41,12 +42,14 @@ public final class VideoSourceManager {
         }
 
         let resolvedWikimedia = wikimediaService ?? WikimediaCinemaService(httpClient: httpClient)
+        let resolvedPeerTube = peerTubeService ?? PeerTubeCatalogService(httpClient: httpClient)
         self.providers = [
             LocalFileSourceProvider(videoStore: videoStore, fetchSources: fetchClosure),
             DirectLinkSourceProvider(videoStore: videoStore, fetchSources: fetchClosure),
             OpenStreamSourceProvider(iTunesService: iTunesService),
-            WikimediaSourceProvider(service: resolvedWikimedia),
             InternetArchiveSourceProvider(service: internetArchiveService),
+            WikimediaSourceProvider(service: resolvedWikimedia),
+            PeerTubeSourceProvider(service: resolvedPeerTube),
             OfficialServicesProvider()
         ]
     }
@@ -56,10 +59,11 @@ public final class VideoSourceManager {
         episode: MediaEpisode?,
         verifyReachability: Bool = false
     ) async -> [VideoSourceDescriptor] {
+        let activeProviders = providers.filter { SourceProviderPreferences.isEnabled(providerID: $0.id) }
         var batches: [(providerIndex: Int, items: [VideoSourceDescriptor])] = []
 
         await withTaskGroup(of: (Int, [VideoSourceDescriptor]).self) { group in
-            for (index, provider) in providers.enumerated() {
+            for (index, provider) in activeProviders.enumerated() {
                 group.addTask {
                     let result = await provider.sources(for: item, episode: episode)
                     return (index, result)
@@ -101,6 +105,16 @@ public final class VideoSourceManager {
         return await verifySourcesHealth(sorted)
     }
 
+    public func resolveAvailability(
+        for item: MediaItem,
+        episode: MediaEpisode?,
+        verifyReachability: Bool = false
+    ) async -> (sources: [VideoSourceDescriptor], summary: ContentAvailabilitySummary) {
+        let sources = await resolveSources(for: item, episode: episode, verifyReachability: verifyReachability)
+        let summary = ContentAvailabilityResolver.resolve(item: item, sources: sources)
+        return (sources, summary)
+    }
+
     public func verifySourcesHealth(_ descriptors: [VideoSourceDescriptor]) async -> [VideoSourceDescriptor] {
         var indexed: [(Int, VideoSourceDescriptor)] = []
         await withTaskGroup(of: (Int, VideoSourceDescriptor).self) { group in
@@ -122,6 +136,40 @@ public final class VideoSourceManager {
 
     public func inspect(_ descriptor: VideoSourceDescriptor, originalLanguage: String) async -> VideoSourceDescriptor {
         await inspector.inspect(descriptor, originalLanguage: originalLanguage)
+    }
+
+    public func allUserSources() -> [UserVideoSourceDTO] {
+        let descriptor = FetchDescriptor<UserVideoSourceRecord>(
+            sortBy: [SortDescriptor(\.addedAt, order: .reverse)]
+        )
+        return ((try? modelContext.fetch(descriptor)) ?? []).map { $0.toDTO() }
+    }
+
+    public func allUserPlayableMediaIDs() -> Set<String> {
+        let descriptor = FetchDescriptor<UserVideoSourceRecord>()
+        let records = (try? modelContext.fetch(descriptor)) ?? []
+        var ids = Set<String>()
+        for rec in records {
+            if rec.kind == .directLink {
+                if let raw = rec.urlString, case .success = SourceURLValidator.validateSyntax(raw) {
+                    ids.insert(rec.mediaID)
+                }
+            } else if let rel = rec.relativeFilePath, videoStore.fileExists(relativePath: rel) {
+                ids.insert(rec.mediaID)
+            }
+        }
+        return ids
+    }
+
+    public func renameUserSource(id: UUID, newLabel: String) {
+        let trimmed = newLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let descriptor = FetchDescriptor<UserVideoSourceRecord>(
+            predicate: #Predicate { $0.id == id }
+        )
+        guard let record = try? modelContext.fetch(descriptor).first else { return }
+        record.label = trimmed
+        try? modelContext.save()
     }
 
     public func addDirectLinkSource(
@@ -183,6 +231,10 @@ public final class VideoSourceManager {
 
     public func deleteUserSource(descriptorID: String) {
         guard let uuid = extractRecordUUID(from: descriptorID) else { return }
+        deleteUserSource(uuid: uuid)
+    }
+
+    public func deleteUserSource(uuid: UUID) {
         let descriptor = FetchDescriptor<UserVideoSourceRecord>(
             predicate: #Predicate { $0.id == uuid }
         )
@@ -246,9 +298,10 @@ public final class VideoSourceManager {
         case "local_file": return 0
         case "direct_link": return 1
         case "open_stream": return 2
-        case "wikimedia_cinema": return 3
-        case "internet_archive": return 4
-        case "official_services": return 5
+        case "internet_archive": return 3
+        case "wikimedia_cinema": return 4
+        case "peertube_cc": return 5
+        case "official_services": return 6
         default: return 10 + fallback
         }
     }

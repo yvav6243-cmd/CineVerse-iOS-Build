@@ -65,6 +65,8 @@ public struct CategoryGridView: View {
         case .cartoonMovie: return "#F59E0B"
         case .drama: return "#FF6482"
         case .documentary: return "#30D158"
+        case .shortFilm: return "#0D9488"
+        case .indieFestival: return "#DB2777"
         case .special: return "#0EA5E9"
         case .other: return "#AC8E68"
         }

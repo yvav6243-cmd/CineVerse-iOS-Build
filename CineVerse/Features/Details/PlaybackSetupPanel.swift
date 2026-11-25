@@ -10,33 +10,39 @@ public struct PlaybackSetupPanel: View {
     let item: MediaItem
     @Bindable var viewModel: PlaybackSetupViewModel
     let startPositionSeconds: TimeInterval
+    let alertsEnabled: Bool
     let onSelectEpisode: (MediaEpisode) -> Void
     let onStartWatching: (PreWatchPlaybackSelection) -> Void
     let onOpenAddSource: (AddSourceTab) -> Void
     let onImportSubtitle: () -> Void
     let onOpenOfficialURL: (URL) -> Void
     let onPlayTrailer: () -> Void
+    let onToggleAlerts: () -> Void
 
     public init(
         item: MediaItem,
         viewModel: PlaybackSetupViewModel,
         startPositionSeconds: TimeInterval,
+        alertsEnabled: Bool = false,
         onSelectEpisode: @escaping (MediaEpisode) -> Void,
         onStartWatching: @escaping (PreWatchPlaybackSelection) -> Void,
         onOpenAddSource: @escaping (AddSourceTab) -> Void,
         onImportSubtitle: @escaping () -> Void,
         onOpenOfficialURL: @escaping (URL) -> Void,
-        onPlayTrailer: @escaping () -> Void
+        onPlayTrailer: @escaping () -> Void,
+        onToggleAlerts: @escaping () -> Void = {}
     ) {
         self.item = item
         self.viewModel = viewModel
         self.startPositionSeconds = startPositionSeconds
+        self.alertsEnabled = alertsEnabled
         self.onSelectEpisode = onSelectEpisode
         self.onStartWatching = onStartWatching
         self.onOpenAddSource = onOpenAddSource
         self.onImportSubtitle = onImportSubtitle
         self.onOpenOfficialURL = onOpenOfficialURL
         self.onPlayTrailer = onPlayTrailer
+        self.onToggleAlerts = onToggleAlerts
     }
 
     public var body: some View {
@@ -72,26 +78,45 @@ public struct PlaybackSetupPanel: View {
     }
 
     private var headerRow: some View {
-        HStack(spacing: CVSpacing.xs) {
-            Image(systemName: "play.tv")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(CVColor.iris)
-            Text("Video Sources & Voiceovers")
-                .font(CVFont.sectionTitle)
-            Spacer()
-            if viewModel.isInspecting || viewModel.isResolving {
-                ProgressView().controlSize(.small)
-            }
-            Button {
-                Haptics.selection()
-                onOpenAddSource(.link)
-            } label: {
-                Image(systemName: "plus.circle.fill")
-                    .font(.body.weight(.semibold))
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: CVSpacing.xs) {
+                Image(systemName: "play.tv")
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(CVColor.iris)
+                Text("Video Sources & Voiceovers")
+                    .font(CVFont.sectionTitle)
+                Spacer()
+                if viewModel.isInspecting || viewModel.isResolving {
+                    ProgressView().controlSize(.small)
+                }
+                Button {
+                    Haptics.selection()
+                    onOpenAddSource(.link)
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(CVColor.iris)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Attach custom stream or local file")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Attach custom stream or local file")
+
+            if let summary = viewModel.availabilitySummary {
+                HStack(spacing: 6) {
+                    AvailabilityBadge(
+                        status: summary.status,
+                        compact: false,
+                        detailText: summary.canWatchInApp ? summary.highestQualityLabel : nil
+                    )
+                    Spacer(minLength: 4)
+                    if summary.canWatchInApp && !summary.audioLanguages.isEmpty {
+                        Text(summary.audioLanguages.prefix(2).joined(separator: ", "))
+                            .font(CVFont.micro)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+            }
         }
     }
 
@@ -372,21 +397,41 @@ public struct PlaybackSetupPanel: View {
     }
 
     private var noPlayableSourceFallback: some View {
-        VStack(alignment: .leading, spacing: CVSpacing.sm) {
+        let status = viewModel.effectiveAvailabilityStatus
+        let explanation = viewModel.availabilitySummary?.explanation
+            ?? "No verified full-length stream is attached yet. CineVerse never substitutes short trailers for full films."
+        return VStack(alignment: .leading, spacing: CVSpacing.sm) {
             HStack(spacing: CVSpacing.sm) {
-                Image(systemName: "exclamationmark.shield.fill")
+                Image(systemName: status.symbolName)
                     .font(.title3.weight(.semibold))
-                    .foregroundStyle(CVColor.amber)
-                    .frame(width: 38, height: 38)
-                    .background(CVColor.amber.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .foregroundStyle(Color(hex: status.accentHex))
+                    .frame(width: 36, height: 36)
+                    .background(Color(hex: status.accentHex).opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("No Free Full-Length Stream Available").font(CVFont.cardTitle)
-                    Text("This title requires a licensed platform or your own video source. CineVerse never substitutes short trailers for full films.")
+                    Text(status.rawValue).font(CVFont.cardTitle)
+                    Text(explanation)
                         .font(CVFont.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    if let relDate = item.releaseDate, relDate > Date() {
+                        Text("Premiere Date: \(CineVerseDateFormatters.mediumDisplay.string(from: relDate))")
+                            .font(CVFont.micro.weight(.semibold))
+                            .foregroundStyle(CVColor.amber)
+                    }
                 }
             }
+
+            Button {
+                Haptics.selection()
+                onToggleAlerts()
+            } label: {
+                Label(
+                    alertsEnabled ? "Availability Alert Enabled" : "Notify Me When Watchable",
+                    systemImage: alertsEnabled ? "bell.fill" : "bell.badge"
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(CVGlassButtonStyle(compact: true, tint: alertsEnabled ? CVColor.amber.opacity(0.20) : nil))
 
             if !viewModel.officialSources.isEmpty {
                 Text("External Official Platforms (Opens Web Page)")

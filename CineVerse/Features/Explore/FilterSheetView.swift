@@ -87,6 +87,13 @@ public struct FilterSheetView: View {
             }
             .tint(CVColor.success)
 
+            Picker("Availability Status", selection: $draft.availabilityStatus) {
+                Text("Any Status").tag(ContentAvailabilityStatus?.none)
+                ForEach(ContentAvailabilityStatus.allCases) { status in
+                    Text(status.rawValue).tag(ContentAvailabilityStatus?.some(status))
+                }
+            }
+
             Picker("Minimum Video Quality", selection: $draft.minimumVideoQuality) {
                 Text("Any Quality").tag(VideoQualityTier?.none)
                 ForEach([VideoQualityTier.p4K, .p1440, .p1080, .p720], id: \.self) { tier in

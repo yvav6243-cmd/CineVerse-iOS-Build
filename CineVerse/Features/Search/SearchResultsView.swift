@@ -146,18 +146,36 @@ public struct SearchResultsView: View {
         return VStack(spacing: CVSpacing.lg) {
             LazyVGrid(columns: columns, spacing: CVSpacing.lg) {
                 ForEach(items) { item in
-                    Button {
-                        Haptics.selection()
-                        onSelectMedia(item)
-                    } label: {
-                        PosterCard(
-                            item: item,
-                            width: cardWidth,
-                            transitionNamespace: transitionNamespace,
-                            transitionID: item.reference?.id ?? item.id
+                    VStack(alignment: .leading, spacing: 4) {
+                        Button {
+                            Haptics.selection()
+                            onSelectMedia(item)
+                        } label: {
+                            PosterCard(
+                                item: item,
+                                width: cardWidth,
+                                transitionNamespace: transitionNamespace,
+                                transitionID: item.reference?.id ?? item.id
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        let summary = viewModel.availabilityByMediaID[item.id]
+                        let status = summary?.status ?? ContentAvailabilityResolver.quickStatus(for: item)
+                        AvailabilityBadge(
+                            status: status,
+                            compact: true,
+                            detailText: (summary?.canWatchInApp == true) ? summary?.highestQualityLabel : nil
                         )
+
+                        if let summary, summary.canWatchInApp, !summary.audioLanguages.isEmpty {
+                            Text(summary.audioLanguages.prefix(2).joined(separator: ", "))
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .frame(width: cardWidth, alignment: .leading)
+                        }
                     }
-                    .buttonStyle(.plain)
                     .onAppear {
                         Task {
                             await viewModel.loadNextPageIfNeeded(currentItem: item)

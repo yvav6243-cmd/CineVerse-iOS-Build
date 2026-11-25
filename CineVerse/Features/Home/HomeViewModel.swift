@@ -366,7 +366,7 @@ public final class HomeViewModel {
         switch section {
         case .continueWatching, .recentlyWatched, .yourFavorites:
             return true
-        case .trendingNow, .newEpisodes, .recentlyAdded, .trendingMovies, .popularAnime, .popularTVShows,
+        case .trendingNow, .newEpisodes, .recentlyAdded, .publicDomainAndIndie, .trendingMovies, .popularAnime, .popularTVShows,
              .upcomingReleases, .recommendedForYou, .topRated:
             return false
         }
