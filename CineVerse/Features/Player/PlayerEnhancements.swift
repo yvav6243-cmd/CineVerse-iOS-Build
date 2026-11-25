@@ -1,4 +1,6 @@
 import Foundation
+import AVFoundation
+import CoreMedia
 import CoreGraphics
 
 public enum VideoPicturePreset: String, CaseIterable, Identifiable, Codable, Sendable {
@@ -59,21 +61,38 @@ public struct PlaybackQualityDiagnostics: Equatable, Sendable {
     public let videoWidth: Int
     public let videoHeight: Int
     public let observedBitrateBitsPerSecond: Double
+    public let framesPerSecond: Double
+    public let dynamicRange: String
+    public let videoCodec: String?
 
     public static let empty = PlaybackQualityDiagnostics(
         videoWidth: 0,
         videoHeight: 0,
-        observedBitrateBitsPerSecond: 0
+        observedBitrateBitsPerSecond: 0,
+        framesPerSecond: 0,
+        dynamicRange: "SDR",
+        videoCodec: nil
     )
 
-    public init(videoWidth: Int, videoHeight: Int, observedBitrateBitsPerSecond: Double) {
+    public init(
+        videoWidth: Int,
+        videoHeight: Int,
+        observedBitrateBitsPerSecond: Double,
+        framesPerSecond: Double = 0,
+        dynamicRange: String = "SDR",
+        videoCodec: String? = nil
+    ) {
         self.videoWidth = max(0, videoWidth)
         self.videoHeight = max(0, videoHeight)
         self.observedBitrateBitsPerSecond = observedBitrateBitsPerSecond.isFinite
             ? max(0, observedBitrateBitsPerSecond)
             : 0
+        self.framesPerSecond = framesPerSecond.isFinite ? max(0, framesPerSecond) : 0
+        self.dynamicRange = dynamicRange.isEmpty ? "SDR" : dynamicRange
+        self.videoCodec = videoCodec?.nilIfEmpty
     }
 
+    /// Honest resolution badge computed strictly from actual decoded video frame height (never upscaled or faked).
     public var resolutionBadge: String {
         switch videoHeight {
         case 2000...: return "4K UHD"
@@ -91,6 +110,15 @@ public struct PlaybackQualityDiagnostics: Equatable, Sendable {
         return "\(videoWidth)×\(videoHeight)"
     }
 
+    public var fpsText: String? {
+        guard framesPerSecond >= 1 else { return nil }
+        let rounded = (framesPerSecond * 10).rounded() / 10
+        if abs(rounded.rounded() - rounded) < 0.15 {
+            return "\(Int(rounded.rounded())) fps"
+        }
+        return String(format: "%.1f fps", rounded)
+    }
+
     public var bitrateText: String? {
         guard observedBitrateBitsPerSecond >= 50_000 else { return nil }
         if observedBitrateBitsPerSecond >= 1_000_000 {
@@ -104,12 +132,26 @@ public struct PlaybackQualityDiagnostics: Equatable, Sendable {
             return "\(resolutionBadge) · \(bitrateText)"
         }
         if videoHeight > 0 {
-            return resolutionBadge
+            return dynamicRange != "SDR" ? "\(resolutionBadge) · \(dynamicRange)" : resolutionBadge
         }
         if let bitrateText {
             return bitrateText
         }
         return "Adaptive Stream"
+    }
+
+    public var fullTechnicalSummary: String {
+        var parts: [String] = []
+        if let dim = dimensionsText {
+            parts.append("\(dim) (\(resolutionBadge))")
+        } else {
+            parts.append(resolutionBadge)
+        }
+        parts.append(dynamicRange)
+        if let codec = videoCodec { parts.append(codec) }
+        if let fps = fpsText { parts.append(fps) }
+        if let br = bitrateText { parts.append(br) }
+        return parts.joined(separator: " · ")
     }
 
     public static func shouldFlushForwardBuffer(
@@ -130,6 +172,39 @@ public struct PlaybackQualityDiagnostics: Equatable, Sendable {
         case .p4K, .auto: return 6
         }
     }
+
+    /// Selects the highest available resolution according to priority: 4K > 2K (1440p) > 1080p > 720p > 480p > 360p,
+    /// while honoring explicit user tier choice or HLS Auto adaptive mode.
+    public static func selectPreferredVariant(
+        from variants: [VideoQualityVariant],
+        preferredTier: VideoQualityTier? = nil,
+        format: VideoStreamFormat = .mp4
+    ) -> VideoQualityVariant? {
+        guard !variants.isEmpty else { return nil }
+
+        // 1. Exact tier match if explicitly requested (and for non-HLS .auto, pick highest concrete resolution!)
+        if let preferredTier {
+            if preferredTier == .auto {
+                if format == .hls, let autoVar = variants.first(where: { $0.tier == .auto }) {
+                    return autoVar
+                }
+            } else if let exact = variants.first(where: { $0.tier == preferredTier }) {
+                return exact
+            }
+        }
+
+        // 2. Priority fallback: 4K (2160p) -> 2K (1440p) -> 1080p -> 720p -> 480p -> 360p
+        let concreteHighest = variants
+            .filter { $0.tier != .auto }
+            .max { lhs, rhs in
+                if lhs.tier.resolutionPriorityRank != rhs.tier.resolutionPriorityRank {
+                    return lhs.tier.resolutionPriorityRank < rhs.tier.resolutionPriorityRank
+                }
+                return (lhs.bandwidthBitsPerSecond ?? 0) < (rhs.bandwidthBitsPerSecond ?? 0)
+            }
+
+        return concreteHighest ?? variants.first
+    }
 }
 
 public enum SourceFailoverPlanner {
@@ -141,8 +216,69 @@ public enum SourceFailoverPlanner {
         candidates.first { candidate in
             candidate.isAvailable
                 && candidate.format.isDirectlyPlayable
+                && candidate.healthStatus.isHealthyOrUnchecked
                 && candidate.id != failedID
                 && !triedIDs.contains(candidate.id)
         }
+    }
+}
+
+public enum AVMediaTrackHelpers {
+    public static func codecDisplayName(for fourCC: FourCharCode) -> String? {
+        let chars: [Character] = [
+            Character(UnicodeScalar((fourCC >> 24) & 0xFF) ?? "?"),
+            Character(UnicodeScalar((fourCC >> 16) & 0xFF) ?? "?"),
+            Character(UnicodeScalar((fourCC >> 8) & 0xFF) ?? "?"),
+            Character(UnicodeScalar(fourCC & 0xFF) ?? "?")
+        ]
+        let code = String(chars).trimmingCharacters(in: .whitespaces).lowercased()
+        switch code {
+        case "avc1", "avc3": return "H.264"
+        case "hvc1", "hev1": return "HEVC"
+        case "dvh1", "dvhe": return "Dolby Vision"
+        case "av01": return "AV1"
+        case "vp09": return "VP9"
+        case "mp4v": return "MPEG-4"
+        default: return code.isEmpty ? nil : code.uppercased()
+        }
+    }
+
+    public static func matchingOption(
+        in group: AVMediaSelectionGroup,
+        forLanguageCode languageCode: String,
+        displayName: String
+    ) -> AVMediaSelectionOption? {
+        let targetLang = languageCode.lowercased()
+        let targetName = displayName.lowercased()
+        return group.options.first { opt in
+            let optLang = opt.locale?.language.languageCode?.identifier.lowercased() ?? opt.extendedLanguageTag?.lowercased() ?? ""
+            return optLang == targetLang && opt.displayName.lowercased().contains(targetName)
+        } ?? group.options.first { opt in
+            let optLang = opt.locale?.language.languageCode?.identifier.lowercased() ?? opt.extendedLanguageTag?.lowercased() ?? ""
+            return optLang == targetLang
+        }
+    }
+
+    public static func makeTextStyleRules(from style: SubtitleAppearanceStyle) -> [AVTextStyleRule] {
+        let fg = rgbaComponents(hex: style.textColorHex, opacity: 1.0)
+        let bg = rgbaComponents(hex: style.backgroundColorHex, opacity: style.backgroundOpacity)
+        let attrs: [String: Any] = [
+            kCMTextMarkupAttribute_ForegroundColorARGB as String: fg,
+            kCMTextMarkupAttribute_BackgroundColorARGB as String: bg,
+            kCMTextMarkupAttribute_RelativeFontSize as String: (style.fontSize / 18.0) * 100.0
+        ]
+        return AVTextStyleRule(textMarkupAttributes: attrs).map { [$0] } ?? []
+    }
+
+    private static func rgbaComponents(hex: String, opacity: Double) -> [CGFloat] {
+        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&int)
+        return [
+            CGFloat(opacity),
+            CGFloat((int >> 16) & 0xFF) / 255.0,
+            CGFloat((int >> 8) & 0xFF) / 255.0,
+            CGFloat(int & 0xFF) / 255.0
+        ]
     }
 }

@@ -52,14 +52,19 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
         do {
             let items: [MediaItem]
             switch section {
+            case .trendingNow:
+                items = try await fetchTrendingNow(language: language, hasTMDB: hasTMDB)
+            case .newEpisodes:
+                items = try await fetchNewEpisodes(language: language, hasTMDB: hasTMDB)
             case .recentlyAdded:
                 items = try await fetchRecentlyAdded(language: language, hasTMDB: hasTMDB)
             case .trendingMovies:
                 if hasTMDB {
-                    items = try await tmdb.trendingMovies(page: 1, language: language)
+                    let tmdbMovies = try await tmdb.trendingMovies(page: 1, language: language)
+                    items = MediaMerger.merge(iTunes.openCinemaShowcase().filter { !$0.projectType.isEpisodic } + tmdbMovies)
                 } else {
                     let charts = try await iTunes.topMovies(genreID: nil, limit: 50)
-                    items = MediaMerger.merge(iTunes.openCinemaShowcase() + charts)
+                    items = MediaMerger.merge(iTunes.openCinemaShowcase().filter { !$0.projectType.isEpisodic } + charts)
                 }
             case .popularAnime:
                 var params = AniListSearchParameters()
@@ -272,6 +277,41 @@ public final class CatalogRepository: CatalogRepositoryProtocol, @unchecked Send
         }
         let fallback = try await discover(criteria: criteria, page: 1, language: language)
         return fallback.items.randomElement()
+    }
+
+    private func fetchTrendingNow(language: String, hasTMDB: Bool) async throws -> [MediaItem] {
+        let openShowcase = iTunes.openCinemaShowcase()
+        async let aniTask: [MediaItem] = {
+            var p = AniListSearchParameters()
+            p.sort = ["TRENDING_DESC"]
+            p.perPage = 10
+            return (try? await aniList.fetchMediaPage(p).items) ?? []
+        }()
+        async let movieTask: [MediaItem] = hasTMDB
+            ? ((try? await tmdb.trendingMovies(page: 1, language: language)) ?? [])
+            : ((try? await iTunes.topMovies(genreID: nil, limit: 16)) ?? [])
+        async let tvTask: [MediaItem] = hasTMDB
+            ? ((try? await tmdb.popularTV(page: 1, language: language)) ?? [])
+            : ((try? await tvMaze.showIndex(page: 1)) ?? [])
+
+        let combined = openShowcase + Array((await movieTask).prefix(10)) + (await aniTask) + Array((await tvTask).prefix(8))
+        return MediaMerger.merge(combined)
+    }
+
+    private func fetchNewEpisodes(language: String, hasTMDB: Bool) async throws -> [MediaItem] {
+        let openSeries = iTunes.openCinemaShowcase().filter { $0.projectType.isEpisodic }
+        async let airingAnime: [MediaItem] = {
+            var p = AniListSearchParameters()
+            p.status = "RELEASING"
+            p.sort = ["POPULARITY_DESC"]
+            p.perPage = 16
+            return (try? await aniList.fetchMediaPage(p).items) ?? []
+        }()
+        async let airingTV: [MediaItem] = hasTMDB
+            ? ((try? await tmdb.onTheAirTV(page: 1, language: language)) ?? [])
+            : (((try? await tvMaze.showIndex(page: 1)) ?? []).filter { $0.releaseStatus == .releasing })
+
+        return MediaMerger.merge(openSeries + (await airingAnime) + Array((await airingTV).prefix(14)))
     }
 
     private func fetchRecentlyAdded(language: String, hasTMDB: Bool) async throws -> [MediaItem] {

@@ -168,6 +168,8 @@ public struct MediaEpisode: Codable, Identifiable, Hashable, Sendable {
     public let airDate: Date?
     public let stillImageURL: URL?
     public let directStreamURL: URL?
+    public let introStartSeconds: TimeInterval?
+    public let introEndSeconds: TimeInterval?
 
     public init(
         id: String,
@@ -179,7 +181,9 @@ public struct MediaEpisode: Codable, Identifiable, Hashable, Sendable {
         durationMinutes: Int,
         airDate: Date? = nil,
         stillImageURL: URL? = nil,
-        directStreamURL: URL? = nil
+        directStreamURL: URL? = nil,
+        introStartSeconds: TimeInterval? = nil,
+        introEndSeconds: TimeInterval? = nil
     ) {
         self.id = id
         self.seasonNumber = seasonNumber
@@ -191,6 +195,8 @@ public struct MediaEpisode: Codable, Identifiable, Hashable, Sendable {
         self.airDate = airDate
         self.stillImageURL = stillImageURL
         self.directStreamURL = directStreamURL
+        self.introStartSeconds = introStartSeconds
+        self.introEndSeconds = introEndSeconds
     }
 
     public var formattedCode: String {

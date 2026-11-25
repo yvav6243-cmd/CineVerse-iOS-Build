@@ -96,6 +96,14 @@ public struct HeroCarouselView: View {
                 HStack(spacing: CVSpacing.xs) {
                     TypeBadge(projectType: item.projectType)
                     RatingBadge(score: item.displayRating, compact: false)
+                    if item.primarySource == .openCinema {
+                        Label("Full Film · 4K/HD", systemImage: "checkmark.seal.fill")
+                            .font(CVFont.micro.weight(.bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(CVColor.success.opacity(0.85), in: Capsule(style: .continuous))
+                    }
                     Spacer()
                 }
                 .environment(\.colorScheme, .dark)
@@ -113,7 +121,7 @@ public struct HeroCarouselView: View {
                         Haptics.impact(.light)
                         onOpen(item)
                     } label: {
-                        Label("Open", systemImage: "play.fill")
+                        Label("Watch Now", systemImage: "play.fill")
                     }
                     .buttonStyle(CVPrimaryButtonStyle(compact: true))
 

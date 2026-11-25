@@ -1,7 +1,7 @@
 import SwiftUI
 
 public enum AddSourceTab: String, CaseIterable, Identifiable, Sendable {
-    case link = "HTTPS Link (.m3u8 / .mp4)"
+    case link = "HTTPS Link (.m3u8 / .mp4 / .webm)"
     case file = "Local Video File"
     public var id: String { rawValue }
 }
@@ -50,17 +50,17 @@ public struct PlaybackSetupPanel: View {
             if viewModel.isResolving && !viewModel.hasPlayableSource {
                 HStack(spacing: CVSpacing.sm) {
                     ProgressView()
-                    Text("Checking available video streams and tracks...")
-                        .font(CVFont.caption).foregroundStyle(.secondary)
+                    Text("Probing full-length video sources, audio tracks, and stream health...")
+                        .font(CVFont.caption)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.vertical, CVSpacing.xs)
             } else if viewModel.hasPlayableSource, let source = viewModel.selectedSource {
-                menusSection(source: source)
-
+                sourceCardsList(selected: source)
+                menusSection
                 if let error = viewModel.subtitleImportError {
                     Text(error).font(CVFont.caption).foregroundStyle(CVColor.danger)
                 }
-
                 startWatchingButton
             } else {
                 noPlayableSourceFallback
@@ -73,20 +73,32 @@ public struct PlaybackSetupPanel: View {
 
     private var headerRow: some View {
         HStack(spacing: CVSpacing.xs) {
-            Image(systemName: "slider.horizontal.3")
+            Image(systemName: "play.tv")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(CVColor.iris)
-            Text("Playback Setup").font(CVFont.sectionTitle)
+            Text("Video Sources & Voiceovers")
+                .font(CVFont.sectionTitle)
             Spacer()
             if viewModel.isInspecting || viewModel.isResolving {
                 ProgressView().controlSize(.small)
             }
+            Button {
+                Haptics.selection()
+                onOpenAddSource(.link)
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(CVColor.iris)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Attach custom stream or local file")
         }
     }
 
     @ViewBuilder
     private var episodeSelectorRow: some View {
         let allEpisodes = item.seasons
+            .filter { $0.seasonNumber > 0 }
             .sorted { $0.seasonNumber < $1.seasonNumber }
             .flatMap { $0.episodes.sorted { $0.episodeNumber < $1.episodeNumber } }
 
@@ -115,18 +127,98 @@ public struct PlaybackSetupPanel: View {
                 .background(CVColor.iris.opacity(0.14), in: RoundedRectangle(cornerRadius: CVRadius.chip, style: .continuous))
             }
             .buttonStyle(.plain)
-        } else if let current = viewModel.selectedEpisode {
-            Label("Target Episode: \(current.formattedCode) · \(current.title)", systemImage: "tv")
-                .font(CVFont.caption.weight(.semibold))
-                .foregroundStyle(CVColor.iris)
-                .lineLimit(1)
         }
     }
 
-    private func menusSection(source: VideoSourceDescriptor) -> some View {
+    private func sourceCardsList(selected: VideoSourceDescriptor) -> some View {
+        VStack(alignment: .leading, spacing: CVSpacing.xs) {
+            Text("Verified Full-Length Sources (\(viewModel.playableSources.count))")
+                .font(CVFont.micro.weight(.bold))
+                .foregroundStyle(.secondary)
+
+            ForEach(viewModel.playableSources) { src in
+                let isSelected = src.id == selected.id
+                Button {
+                    Haptics.selection()
+                    Task { await viewModel.selectSource(src) }
+                } label: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) {
+                            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(isSelected ? CVColor.iris : .secondary)
+                            Text(src.providerName)
+                                .font(CVFont.caption.weight(.bold))
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                            Spacer()
+                            badgePill(src.highestQualityLabel, tint: CVColor.amber)
+                            badgePill(src.format.badgeText, tint: CVColor.iris)
+                        }
+
+                        HStack(spacing: 8) {
+                            Label(src.healthStatus.badgeLabel, systemImage: "checkmark.shield.fill")
+                                .foregroundStyle(CVColor.success)
+                            Text("·")
+                            Text(durationText(for: src))
+                            Text("·")
+                            Text(src.isAvailable ? "Available" : "Offline")
+                        }
+                        .font(CVFont.micro)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+
+                        HStack(spacing: 8) {
+                            Label("Audio: \(src.audioSummaryLabel)", systemImage: "waveform")
+                            Text("·")
+                            Label("Subs: \(src.subtitleSummaryLabel)", systemImage: "captions.bubble")
+                        }
+                        .font(CVFont.micro)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    }
+                    .padding(CVSpacing.sm)
+                    .background(
+                        isSelected ? CVColor.iris.opacity(0.14) : Color(.tertiarySystemFill).opacity(0.45),
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(isSelected ? CVColor.iris.opacity(0.65) : Color.clear, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    if viewModel.isUserSource(src) {
+                        Button(role: .destructive) {
+                            Task { await viewModel.deleteSource(src) }
+                        } label: {
+                            Label("Remove Source", systemImage: "trash")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func durationText(for src: VideoSourceDescriptor) -> String {
+        if let sec = src.durationSeconds, sec >= 60 {
+            return "\(Int((sec / 60).rounded())) min"
+        }
+        let fallbackMin = viewModel.selectedEpisode?.durationMinutes ?? item.durationMinutes
+        return fallbackMin > 0 ? "\(fallbackMin) min" : "Full Stream"
+    }
+
+    private func badgePill(_ text: String, tint: Color) -> some View {
+        Text(text)
+            .font(CVFont.micro.weight(.bold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(tint.opacity(0.16), in: Capsule(style: .continuous))
+    }
+
+    private var menusSection: some View {
         VStack(spacing: 0) {
-            sourceMenuRow(selected: source)
-            Divider().padding(.leading, 34)
             qualityMenuRow
             Divider().padding(.leading, 34)
             voiceoverMenuRow
@@ -134,48 +226,6 @@ public struct PlaybackSetupPanel: View {
             subtitlesMenuRow
         }
         .background(Color(.tertiarySystemFill).opacity(0.45), in: RoundedRectangle(cornerRadius: CVRadius.poster, style: .continuous))
-    }
-
-    private func sourceMenuRow(selected: VideoSourceDescriptor) -> some View {
-        Menu {
-            ForEach(viewModel.playableSources) { src in
-                Button {
-                    Haptics.selection()
-                    Task { await viewModel.selectSource(src) }
-                } label: {
-                    menuOptionLabel("\(src.providerName) (\(src.format.badgeText))", selected: src.id == selected.id)
-                }
-            }
-
-            let userSources = viewModel.playableSources.filter { viewModel.isUserSource($0) }
-            if !userSources.isEmpty {
-                Divider()
-                Menu("Remove Attached Source") {
-                    ForEach(userSources) { src in
-                        Button(role: .destructive) {
-                            Haptics.impact(.medium)
-                            Task { await viewModel.deleteSource(src) }
-                        } label: {
-                            Label("Delete \(src.providerName)", systemImage: "trash")
-                        }
-                    }
-                }
-            }
-
-            Divider()
-            Button { onOpenAddSource(.link) } label: {
-                Label("Add Video Link / File", systemImage: "plus.circle")
-            }
-        } label: {
-            setupRowContent(
-                icon: "play.tv",
-                title: "Source",
-                value: selected.providerName,
-                badgeText: selected.format.badgeText,
-                badgeTint: CVColor.iris
-            )
-        }
-        .buttonStyle(.plain)
     }
 
     private var qualityMenuRow: some View {
@@ -196,7 +246,9 @@ public struct PlaybackSetupPanel: View {
             setupRowContent(
                 icon: "dial.high",
                 title: "Quality",
-                value: viewModel.selectedQuality?.detailedLabel ?? "Auto (Adaptive)"
+                value: viewModel.selectedQuality?.detailedLabel ?? "Auto (Adaptive)",
+                badgeText: viewModel.selectedQuality?.tier.shortBadge,
+                badgeTint: CVColor.amber
             )
         }
         .buttonStyle(.plain)
@@ -205,7 +257,7 @@ public struct PlaybackSetupPanel: View {
     private var voiceoverMenuRow: some View {
         Menu {
             if viewModel.availableAudioTracks.isEmpty {
-                Text("Default Stream Audio")
+                Text("Original Audio")
             } else {
                 ForEach(viewModel.availableAudioTracks) { track in
                     Button {
@@ -221,8 +273,8 @@ public struct PlaybackSetupPanel: View {
             setupRowContent(
                 icon: "waveform",
                 title: "Voiceover",
-                value: track.map { "\($0.displayName) · \($0.voiceoverStudio)" } ?? "Default Audio",
-                badgeText: (track?.isOriginal == true) ? "Original" : nil,
+                value: track?.fullLabel ?? "Original Audio",
+                badgeText: (track?.isOriginal == true) ? "Original" : track?.voiceoverKind.rawValue,
                 badgeTint: CVColor.success
             )
         }
@@ -237,7 +289,6 @@ public struct PlaybackSetupPanel: View {
             } label: {
                 menuOptionLabel("Off", selected: viewModel.selectedSubtitleTrack == nil)
             }
-
             if !viewModel.availableSubtitles.isEmpty {
                 Divider()
                 ForEach(viewModel.availableSubtitles) { sub in
@@ -249,7 +300,6 @@ public struct PlaybackSetupPanel: View {
                     }
                 }
             }
-
             Divider()
             Button { onImportSubtitle() } label: {
                 Label("Import Subtitle (.srt / .vtt)", systemImage: "doc.badge.plus")
@@ -281,27 +331,17 @@ public struct PlaybackSetupPanel: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(CVColor.iris)
                 .frame(width: 22)
-
             Text(LocalizedStringKey(title))
                 .font(CVFont.callout)
                 .foregroundStyle(.primary)
-
             Spacer(minLength: 8)
-
             if let badgeText {
-                Text(badgeText)
-                    .font(CVFont.micro)
-                    .foregroundStyle(badgeTint)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(badgeTint.opacity(0.16), in: Capsule(style: .continuous))
+                badgePill(badgeText, tint: badgeTint)
             }
-
             Text(value)
                 .font(CVFont.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-
             Image(systemName: "chevron.up.chevron.down")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.tertiary)
@@ -320,7 +360,7 @@ public struct PlaybackSetupPanel: View {
         } label: {
             HStack(spacing: CVSpacing.xs) {
                 Image(systemName: "play.fill").font(.subheadline.weight(.bold))
-                Text(startPositionSeconds > 5 ? "Start Watching · Resume \(startPositionSeconds.formattedPlaybackTime)" : "Start Watching")
+                Text(startPositionSeconds > 5 ? "Watch Full Video · Resume \(startPositionSeconds.formattedPlaybackTime)" : "Watch Full Video")
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity)
@@ -332,57 +372,57 @@ public struct PlaybackSetupPanel: View {
     private var noPlayableSourceFallback: some View {
         VStack(alignment: .leading, spacing: CVSpacing.sm) {
             HStack(spacing: CVSpacing.sm) {
-                Image(systemName: "play.rectangle.on.rectangle.fill")
+                Image(systemName: "exclamationmark.shield.fill")
                     .font(.title3.weight(.semibold))
-                    .foregroundStyle(CVColor.iris)
+                    .foregroundStyle(CVColor.amber)
                     .frame(width: 38, height: 38)
-                    .background(CVColor.iris.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .background(CVColor.amber.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("No Open Stream for This Title").font(CVFont.cardTitle)
-                    Text(fallbackDescription).font(CVFont.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Text("No Free Full-Length Stream Available").font(CVFont.cardTitle)
+                    Text("This title requires a licensed platform or your own video source. CineVerse never substitutes short trailers for full films.")
+                        .font(CVFont.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-            }
-
-            if item.trailerURL != nil {
-                Button {
-                    Haptics.impact(.medium)
-                    onPlayTrailer()
-                } label: {
-                    Label("Play Trailer in CineVerse Player", systemImage: "play.fill")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(CVPrimaryButtonStyle())
-            }
-
-            HStack(spacing: CVSpacing.xs) {
-                Button { Haptics.impact(.light); onOpenAddSource(.file) } label: {
-                    Label("Local File", systemImage: "folder.badge.plus").frame(maxWidth: .infinity)
-                }.buttonStyle(CVGlassButtonStyle(compact: true))
-
-                Button { Haptics.impact(.light); onOpenAddSource(.link) } label: {
-                    Label("Custom Stream", systemImage: "plus.circle").frame(maxWidth: .infinity)
-                }.buttonStyle(CVGlassButtonStyle(compact: true))
             }
 
             if !viewModel.officialSources.isEmpty {
-                Divider().padding(.vertical, 2)
-                Text("Official Streaming Platforms").font(CVFont.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Text("Watch Legally on Official Platforms")
+                    .font(CVFont.micro.weight(.bold))
+                    .foregroundStyle(.secondary)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: CVSpacing.xs) {
                         ForEach(viewModel.officialSources) { official in
                             if let url = official.officialServiceURL {
                                 Button { Haptics.selection(); onOpenOfficialURL(url) } label: {
-                                    Label("Open in \(official.providerName)", systemImage: "play.tv")
-                                }.buttonStyle(CVGlassButtonStyle(compact: true))
+                                    Label(official.providerName, systemImage: "arrow.up.right.square")
+                                }.buttonStyle(CVPrimaryButtonStyle(compact: true))
                             }
                         }
                     }
                 }
             }
-        }
-    }
 
-    private var fallbackDescription: String {
-        "Full episodes and films are only available from licensed services. Play the official trailer in the CineVerse player, or attach your own stream or file."
+            HStack(spacing: CVSpacing.xs) {
+                Button { Haptics.impact(.light); onOpenAddSource(.link) } label: {
+                    Label("Add Stream (.m3u8/.mp4)", systemImage: "link.badge.plus").frame(maxWidth: .infinity)
+                }.buttonStyle(CVGlassButtonStyle(compact: true))
+
+                Button { Haptics.impact(.light); onOpenAddSource(.file) } label: {
+                    Label("Local File", systemImage: "folder.badge.plus").frame(maxWidth: .infinity)
+                }.buttonStyle(CVGlassButtonStyle(compact: true))
+            }
+
+            if item.trailerURL != nil {
+                Button {
+                    Haptics.selection()
+                    onPlayTrailer()
+                } label: {
+                    Label("Watch Official Trailer (Preview Only)", systemImage: "film")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(CVGlassButtonStyle(compact: true))
+            }
+        }
     }
 }

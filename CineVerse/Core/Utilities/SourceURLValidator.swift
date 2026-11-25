@@ -28,7 +28,7 @@ public enum SourceValidationError: LocalizedError, Sendable, Equatable {
         case .forbiddenFileType(let ext):
             return "Files with extension .\(ext) are blocked as potentially unsafe."
         case .unsupportedMediaType(let detail):
-            return "Unsupported stream format (\(detail)). Use .m3u8, .mp4, .m4v, or .mov."
+            return "Unsupported stream format (\(detail)). Use .m3u8, .mp4, .m4v, .mov, .webm, or .mpd."
         case .unreachable(let reason):
             return "Could not verify stream availability: \(reason)"
         }
@@ -47,13 +47,15 @@ public enum SourceURLValidator {
         "js", "zip", "rar", "7z", "msi", "deb", "cmd", "ps1", "scr", "tar", "gz"
     ]
 
-    private static let allowedVideoExtensions: Set<String> = ["m3u8", "mp4", "m4v", "mov"]
+    private static let allowedVideoExtensions: Set<String> = ["m3u8", "mp4", "m4v", "mov", "webm", "mpd"]
     private static let allowedSubtitleExtensions: Set<String> = ["srt", "vtt"]
 
     private static let acceptedVideoContentTypes: Set<String> = [
         "video/mp4",
         "video/quicktime",
         "video/x-m4v",
+        "video/webm",
+        "application/dash+xml",
         "application/vnd.apple.mpegurl",
         "application/x-mpegurl",
         "audio/mpegurl",
@@ -161,6 +163,12 @@ public enum SourceURLValidator {
         let ext = url.pathExtension.lowercased()
         if ext == "m3u8" || rawContentType.contains("mpegurl") {
             return .success(ValidatedStreamInfo(url: url, detectedFormat: .hls, contentType: rawContentType))
+        }
+        if ext == "mpd" || rawContentType.contains("dash+xml") {
+            return .success(ValidatedStreamInfo(url: url, detectedFormat: .dash, contentType: rawContentType))
+        }
+        if ext == "webm" || rawContentType.contains("webm") {
+            return .success(ValidatedStreamInfo(url: url, detectedFormat: .webm, contentType: rawContentType))
         }
         if allowedVideoExtensions.contains(ext) || acceptedVideoContentTypes.contains(rawContentType) || rawContentType.hasPrefix("video/") {
             return .success(ValidatedStreamInfo(url: url, detectedFormat: .mp4, contentType: rawContentType))

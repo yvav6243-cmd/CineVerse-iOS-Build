@@ -15,6 +15,7 @@ public final class AppContainer {
     public let tvMazeService: TVMazeServiceProtocol
     public let jikanService: JikanServiceProtocol
     public let iTunesService: ITunesCatalogServiceProtocol
+    public let wikimediaService: WikimediaCinemaServiceProtocol
     public let internetArchiveService: InternetArchiveServiceProtocol
 
     public let catalogRepository: CatalogRepositoryProtocol
@@ -46,6 +47,7 @@ public final class AppContainer {
         self.tvMazeService = TVMazeService(httpClient: httpClient)
         self.jikanService = JikanService(httpClient: httpClient)
         self.iTunesService = ITunesCatalogService(httpClient: httpClient)
+        self.wikimediaService = WikimediaCinemaService(httpClient: httpClient)
         self.internetArchiveService = InternetArchiveService(httpClient: httpClient)
 
         self.catalogRepository = CatalogRepository(
@@ -83,7 +85,8 @@ public final class AppContainer {
             modelContext: context,
             httpClient: httpClient,
             internetArchiveService: internetArchiveService,
-            iTunesService: iTunesService
+            iTunesService: iTunesService,
+            wikimediaService: wikimediaService
         )
         self.trackerService = TrackerService(
             libraryRepository: libRepo,

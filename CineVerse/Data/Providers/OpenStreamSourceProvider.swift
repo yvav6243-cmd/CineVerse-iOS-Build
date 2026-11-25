@@ -1,8 +1,11 @@
 import Foundation
 
+/// Resolves ONLY verified full-length streams from CineVerse Open Cinema & episode direct streams.
+/// Short 2-minute trailers/previews are strictly excluded from movie/episode video sources
+/// and remain exclusively on the dedicated Watch Trailer action.
 public final class OpenStreamSourceProvider: VideoSourceProvider, @unchecked Sendable {
     public let id = "open_stream"
-    public let displayName = "CineVerse Instant Stream"
+    public let displayName = "CineVerse Open Cinema"
 
     private let iTunesService: ITunesCatalogServiceProtocol
 
@@ -14,69 +17,40 @@ public final class OpenStreamSourceProvider: VideoSourceProvider, @unchecked Sen
         var collected: [VideoSourceDescriptor] = []
         var seenURLs: Set<String> = []
 
-        // 1. Open Cinema full-length multi-mirror streams
-        let openStreams = OpenCinemaLibrary.streams(forItemID: item.id)
-        for (index, stream) in openStreams.enumerated() {
-            guard seenURLs.insert(stream.url.absoluteString).inserted else { continue }
-            let isHLS = stream.url.pathExtension.lowercased() == "m3u8"
-                || stream.url.absoluteString.contains(".m3u8")
+        // 1. Direct HTTPS episode stream if explicitly attached on the episode model
+        if let epURL = episode?.directStreamURL,
+           epURL.scheme?.lowercased() == "https",
+           seenURLs.insert(epURL.absoluteString).inserted {
+            let fmt = Self.detectFormat(for: epURL)
             collected.append(
-                makeDirectDescriptor(
-                    id: "openstream:\(item.id):\(index)",
-                    url: stream.url,
-                    format: isHLS ? .hls : .mp4,
-                    label: "CineVerse Open Cinema · \(stream.label)",
-                    description: stream.note,
-                    language: item.originalLanguage,
-                    episodeID: episode?.id
-                )
-            )
-        }
-
-        // 2. Direct verified HTTPS video stream attached on the item (e.g. Apple CDN .m4v)
-        if let embeddedRaw = item.externalIDs[.openCinema],
-           embeddedRaw.hasPrefix("https://"),
-           let directURL = URL(string: embeddedRaw),
-           directURL.scheme?.lowercased() == "https",
-           seenURLs.insert(directURL.absoluteString).inserted {
-            let fmt: VideoStreamFormat = (directURL.pathExtension.lowercased() == "m3u8" || embeddedRaw.contains(".m3u8")) ? .hls : .mp4
-            collected.append(
-                makeDirectDescriptor(
-                    id: "openstream-direct:\(item.id)",
-                    url: directURL,
+                makeFullLengthDescriptor(
+                    id: "openstream-ep:\(episode?.id ?? item.id)",
+                    url: epURL,
                     format: fmt,
-                    label: "Official Trailer (Apple)",
-                    description: "Direct verified HTTPS stream",
+                    label: "CineVerse Open Episode Stream",
+                    description: "Full episode stream",
                     language: item.originalLanguage,
+                    durationMinutes: episode?.durationMinutes ?? item.durationMinutes,
                     episodeID: episode?.id
                 )
             )
         }
 
-        // 3. Multiple official Apple previews/trailers resolved automatically by title
-        let isOpenCinemaItem = !openStreams.isEmpty
-            || (item.reference?.provider == .openCinema && item.reference?.providerID.hasPrefix("open-") == true)
-
-        if !isOpenCinemaItem {
-            let matches = await iTunesService.findPlayablePreviews(
-                title: item.localizedTitle,
-                originalTitle: item.originalTitle,
-                isEpisodic: item.projectType.isEpisodic,
-                seasonNumber: episode?.seasonNumber,
-                episodeNumber: episode?.episodeNumber,
-                limit: 6
-            )
-            let epKey = episode?.id ?? "main"
-            for (index, match) in matches.enumerated() {
-                guard seenURLs.insert(match.url.absoluteString).inserted else { continue }
+        // 2. Open Cinema full-length multi-mirror streams (only for non-episodic or fallback)
+        if episode == nil || episode?.directStreamURL == nil {
+            let openStreams = OpenCinemaLibrary.streams(forItemID: item.id)
+            for (index, stream) in openStreams.enumerated() {
+                guard seenURLs.insert(stream.url.absoluteString).inserted else { continue }
+                let fmt = Self.detectFormat(for: stream.url)
                 collected.append(
-                    makeDirectDescriptor(
-                        id: "openstream-auto:\(item.id):\(epKey):\(index)",
-                        url: match.url,
-                        format: .mp4,
-                        label: match.label,
-                        description: "Official Apple preview stream ready in CineVerse player",
+                    makeFullLengthDescriptor(
+                        id: "openstream:\(item.id):\(index)",
+                        url: stream.url,
+                        format: fmt,
+                        label: "CineVerse Open Cinema · \(stream.label)",
+                        description: stream.note,
                         language: item.originalLanguage,
+                        durationMinutes: item.durationMinutes,
                         episodeID: episode?.id
                     )
                 )
@@ -86,13 +60,23 @@ public final class OpenStreamSourceProvider: VideoSourceProvider, @unchecked Sen
         return collected
     }
 
-    private func makeDirectDescriptor(
+    private static func detectFormat(for url: URL) -> VideoStreamFormat {
+        let ext = url.pathExtension.lowercased()
+        let raw = url.absoluteString.lowercased()
+        if ext == "m3u8" || raw.contains(".m3u8") { return .hls }
+        if ext == "webm" { return .webm }
+        if ext == "mpd" { return .dash }
+        return .mp4
+    }
+
+    private func makeFullLengthDescriptor(
         id: String,
         url: URL,
         format: VideoStreamFormat,
         label: String,
         description: String,
         language: String,
+        durationMinutes: Int,
         episodeID: String?
     ) -> VideoSourceDescriptor {
         let lang = language.nilIfEmpty ?? "en"
@@ -100,7 +84,8 @@ public final class OpenStreamSourceProvider: VideoSourceProvider, @unchecked Sen
             id: "auto-audio-\(lang)",
             languageCode: lang,
             displayName: LanguageCatalog.displayName(forLanguageCode: lang),
-            voiceoverStudio: "Original Direct Audio",
+            voiceoverStudio: "Original Audio",
+            voiceoverKind: .original,
             isOriginal: true,
             isDefault: true
         )
@@ -113,7 +98,9 @@ public final class OpenStreamSourceProvider: VideoSourceProvider, @unchecked Sen
             format: format,
             playbackURL: url,
             availableAudioTracks: [audio],
-            episodeID: episodeID
+            episodeID: episodeID,
+            durationSeconds: durationMinutes > 0 ? TimeInterval(durationMinutes * 60) : nil,
+            healthStatus: .unchecked
         )
     }
 }

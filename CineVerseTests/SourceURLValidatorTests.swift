@@ -52,5 +52,7 @@ struct SourceURLValidatorTests {
         #expect(SourceURLValidator.validateSyntax("https://cdn.example.com/photo.png") == .failure(.unsupportedMediaType(".png")))
         #expect(SourceURLValidator.validateSyntax("https://cdn.example.com/clip.m4v").map { $0.pathExtension } == .success("m4v"))
         #expect(SourceURLValidator.validateSyntax("https://cdn.example.com/clip.mov").map { $0.pathExtension } == .success("mov"))
+        #expect(SourceURLValidator.validateSyntax("https://cdn.example.com/uhd.webm").map { $0.pathExtension } == .success("webm"))
+        #expect(SourceURLValidator.validateSyntax("https://cdn.example.com/manifest.mpd").map { $0.pathExtension } == .success("mpd"))
     }
 }

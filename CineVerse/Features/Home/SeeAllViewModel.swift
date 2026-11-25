@@ -33,7 +33,7 @@ public final class SeeAllViewModel {
 
     public var supportsPagination: Bool {
         switch section {
-        case .trendingMovies, .popularAnime, .popularTVShows,
+        case .trendingNow, .newEpisodes, .trendingMovies, .popularAnime, .popularTVShows,
              .upcomingReleases, .topRated, .recentlyAdded:
             return true
         case .continueWatching, .recentlyWatched, .yourFavorites, .recommendedForYou:
@@ -155,6 +155,10 @@ public final class SeeAllViewModel {
 
     private func discoverCriteria(for section: HomeSectionType) -> CatalogFilterCriteria? {
         switch section {
+        case .trendingNow:
+            return CatalogFilterCriteria(sortBy: .popularity)
+        case .newEpisodes:
+            return CatalogFilterCriteria(releaseStatus: .releasing, sortBy: .popularity)
         case .trendingMovies:
             return CatalogFilterCriteria(selectedCategory: .movie, sortBy: .popularity)
         case .popularAnime:

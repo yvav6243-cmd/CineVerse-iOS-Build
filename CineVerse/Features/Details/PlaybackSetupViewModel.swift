@@ -62,7 +62,11 @@ public final class PlaybackSetupViewModel {
         selectedEpisode = episode
         isResolving = true
 
-        let resolved = await sourceManager.resolveSources(for: item, episode: episode)
+        let resolved = await sourceManager.resolveSources(
+            for: item,
+            episode: episode,
+            verifyReachability: false
+        )
         allSources = resolved
         playableSources = resolved.filter { $0.isAvailable && $0.format.isDirectlyPlayable }
         officialSources = resolved.filter { $0.format == .externalOfficialService }
@@ -83,6 +87,29 @@ public final class PlaybackSetupViewModel {
             selectedQuality = nil
             selectedAudioTrack = nil
             selectedSubtitleTrack = nil
+        }
+
+        // Background health check: verify online status, measure latency, and prune unreachable links
+        if !playableSources.isEmpty {
+            let snapshotID = item.id
+            let snapshotEpID = episode?.id
+            let verified = await sourceManager.verifySourcesHealth(resolved)
+            guard mediaItem?.id == snapshotID && selectedEpisode?.id == snapshotEpID else { return }
+            allSources = verified
+            let healthyPlayable = verified.filter { $0.isAvailable && $0.format.isDirectlyPlayable }
+            playableSources = healthyPlayable
+            if let currentSel = selectedSource, !healthyPlayable.contains(where: { $0.id == currentSel.id }) {
+                if let fallback = healthyPlayable.first {
+                    await selectSource(fallback, entry: entry)
+                } else {
+                    selectedSource = nil
+                }
+            } else if let currentSel = selectedSource,
+                      let updatedSel = healthyPlayable.first(where: { $0.id == currentSel.id }) {
+                var merged = currentSel
+                merged.healthStatus = updatedSel.healthStatus
+                selectedSource = merged
+            }
         }
     }
 
@@ -253,9 +280,16 @@ public final class PlaybackSetupViewModel {
         from descriptor: VideoSourceDescriptor,
         entry: LibraryEntryRecord?
     ) {
-        let preferredQualityTier = entry?.preferredQuality ?? settingsStore.defaultQuality
-        selectedQuality = descriptor.availableQualities.first(where: { $0.tier == preferredQualityTier })
-            ?? descriptor.availableQualities.first
+        let preferredQualityTier: VideoQualityTier? = entry?.preferredQuality ?? (
+            settingsStore.defaultQuality == .auto && descriptor.format == .hls ? .auto : (
+                settingsStore.defaultQuality == .auto ? nil : settingsStore.defaultQuality
+            )
+        )
+        selectedQuality = PlaybackQualityDiagnostics.selectPreferredVariant(
+            from: descriptor.availableQualities,
+            preferredTier: preferredQualityTier,
+            format: descriptor.format
+        )
 
         let preferredAudioLang = (entry?.preferredAudioLanguage ?? settingsStore.defaultAudioLanguage).lowercased()
         selectedAudioTrack = descriptor.availableAudioTracks.first(where: { $0.languageCode.lowercased() == preferredAudioLang })

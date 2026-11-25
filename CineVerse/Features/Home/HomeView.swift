@@ -125,7 +125,7 @@ public struct HomeView: View {
     private func sectionView(for section: HomeSectionType) -> some View {
         VStack(alignment: .leading, spacing: CVSpacing.sm) {
             SectionHeader(
-                title: section.rawValue,
+                title: section.displayTitle,
                 subtitle: section.subtitle,
                 symbolName: section.symbolName,
                 actionTitle: "See All"

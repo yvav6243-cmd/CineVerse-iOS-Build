@@ -54,11 +54,12 @@ public enum LanguageCatalog {
     ]
 
     public static let contentMetadataLanguages: [LanguageOption] = [
-        LanguageOption(code: "en-US", name: "English (US)"),
         LanguageOption(code: "ru-RU", name: "Russian"),
         LanguageOption(code: "kk-KZ", name: "Kazakh"),
+        LanguageOption(code: "en-US", name: "English (US)"),
         LanguageOption(code: "ja-JP", name: "Japanese"),
         LanguageOption(code: "ko-KR", name: "Korean"),
+        LanguageOption(code: "zh-CN", name: "Chinese"),
         LanguageOption(code: "uk-UA", name: "Ukrainian"),
         LanguageOption(code: "de-DE", name: "German"),
         LanguageOption(code: "fr-FR", name: "French"),

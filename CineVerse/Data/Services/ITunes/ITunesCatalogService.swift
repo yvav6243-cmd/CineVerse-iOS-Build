@@ -142,7 +142,9 @@ public final class ITunesCatalogService: ITunesCatalogServiceProtocol, @unchecke
 
     public func lookupDetails(providerID: String) async throws -> MediaItem? {
         if providerID.hasPrefix("open-") {
-            return openCinemaShowcase().first { $0.id == "opencinema:movie:\(providerID)" }
+            return openCinemaShowcase().first {
+                $0.id == "opencinema:movie:\(providerID)" || $0.id == "opencinema:tv:\(providerID)"
+            }
         }
         let cleanID = providerID.replacingOccurrences(of: "itunes-", with: "")
         let ep = Endpoint(

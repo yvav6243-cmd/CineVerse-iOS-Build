@@ -19,7 +19,7 @@ public final class DirectLinkSourceProvider: VideoSourceProvider, @unchecked Sen
         var descriptors: [VideoSourceDescriptor] = []
 
         if let episodeURL = episode?.directStreamURL, episodeURL.scheme?.lowercased() == "https" {
-            let fmt: VideoStreamFormat = episodeURL.pathExtension.lowercased() == "m3u8" ? .hls : .mp4
+            let fmt = Self.detectFormat(for: episodeURL)
             descriptors.append(
                 VideoSourceDescriptor(
                     id: "direct-ep:\(episode?.id ?? item.id)",
@@ -42,7 +42,7 @@ public final class DirectLinkSourceProvider: VideoSourceProvider, @unchecked Sen
                   case .success(let url) = SourceURLValidator.validateSyntax(raw) else {
                 continue
             }
-            let fmt: VideoStreamFormat = url.pathExtension.lowercased() == "m3u8" ? .hls : .mp4
+            let fmt = Self.detectFormat(for: url)
             let subtitles = dto.subtitles.map { sub in
                 let subURL: URL? = sub.relativePathOrURL.hasPrefix("https://")
                     ? URL(string: sub.relativePathOrURL)
@@ -72,5 +72,14 @@ public final class DirectLinkSourceProvider: VideoSourceProvider, @unchecked Sen
         }
 
         return descriptors
+    }
+
+    private static func detectFormat(for url: URL) -> VideoStreamFormat {
+        switch url.pathExtension.lowercased() {
+        case "m3u8": return .hls
+        case "webm": return .webm
+        case "mpd": return .dash
+        default: return .mp4
+        }
     }
 }

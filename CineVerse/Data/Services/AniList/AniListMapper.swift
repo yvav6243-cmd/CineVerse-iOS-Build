@@ -137,7 +137,13 @@ public enum AniListMapper {
         durationMinutes: Int
     ) -> [MediaSeason] {
         guard mapProjectType(dto.format).isEpisodic else { return [] }
-        let streaming = dto.streamingEpisodes ?? []
+        let streaming = (dto.streamingEpisodes ?? []).filter { ep in
+            let lowered = (ep.title ?? "").lowercased()
+            return !lowered.contains("trailer")
+                && !lowered.contains("teaser")
+                && !lowered.hasPrefix("pv ")
+                && lowered != "pv"
+        }
         let count = max(totalEpisodes, streaming.count)
         var episodes: [MediaEpisode] = []
         episodes.reserveCapacity(count)

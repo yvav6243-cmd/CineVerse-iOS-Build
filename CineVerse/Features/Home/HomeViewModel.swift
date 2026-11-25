@@ -112,6 +112,7 @@ public final class HomeViewModel {
             .filter { !Self.isLocalSection($0) }
 
         var sectionsToFetch = Set(visibleRemote)
+        sectionsToFetch.insert(.trendingNow)
         sectionsToFetch.insert(.trendingMovies)
         sectionsToFetch.insert(.popularAnime)
 
@@ -295,6 +296,10 @@ public final class HomeViewModel {
     }
 
     private func updateHeroItems(from outcomes: [HomeSectionType: SectionFetchOutcome]) {
+        let openReady = (outcomes[.trendingNow].flatMap { if case .loaded(let v) = $0 { return v } else { return nil } }
+            ?? sectionStates[.trendingNow]?.value ?? [])
+            .filter { $0.primarySource == .openCinema }
+
         let movies: [MediaItem]
         if case .loaded(let items) = outcomes[.trendingMovies] {
             movies = items
@@ -309,11 +314,15 @@ public final class HomeViewModel {
             anime = sectionStates[.popularAnime]?.value ?? []
         }
 
-        var interleaved: [MediaItem] = []
+        var interleaved: [MediaItem] = Array(openReady.prefix(3))
         let maxPairs = max(movies.count, anime.count)
         for index in 0..<maxPairs {
-            if index < movies.count { interleaved.append(movies[index]) }
-            if index < anime.count { interleaved.append(anime[index]) }
+            if index < movies.count && !interleaved.contains(where: { $0.id == movies[index].id }) {
+                interleaved.append(movies[index])
+            }
+            if index < anime.count && !interleaved.contains(where: { $0.id == anime[index].id }) {
+                interleaved.append(anime[index])
+            }
         }
 
         let withBackdrop = interleaved.filter { $0.backdropURL != nil }
@@ -357,7 +366,7 @@ public final class HomeViewModel {
         switch section {
         case .continueWatching, .recentlyWatched, .yourFavorites:
             return true
-        case .recentlyAdded, .trendingMovies, .popularAnime, .popularTVShows,
+        case .trendingNow, .newEpisodes, .recentlyAdded, .trendingMovies, .popularAnime, .popularTVShows,
              .upcomingReleases, .recommendedForYou, .topRated:
             return false
         }

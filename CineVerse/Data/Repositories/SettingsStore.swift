@@ -62,7 +62,7 @@ public final class SettingsStore {
         self.autoplayNext = loaded.autoplayNext
         self.autosaveProgress = loaded.autosaveProgress
         self.episodeAlertsEnabled = loaded.episodeAlertsEnabled
-        self.homeSections = loaded.homeSections
+        self.homeSections = Self.normalizedHomeSections(loaded.homeSections)
         self.subtitleStyle = loaded.subtitleStyle
         self.watchRegion = loaded.watchRegion
     }
@@ -127,5 +127,17 @@ public final class SettingsStore {
         context.insert(created)
         try? context.save()
         return created
+    }
+
+    private static func normalizedHomeSections(_ existing: [HomeSectionConfiguration]) -> [HomeSectionConfiguration] {
+        guard !existing.isEmpty else { return HomeSectionConfiguration.defaultConfigurations }
+        var result = existing
+        let present = Set(existing.map(\.section))
+        var nextOrder = (existing.map(\.sortOrder).max() ?? 0) + 1
+        for section in HomeSectionType.allCases where !present.contains(section) {
+            result.append(HomeSectionConfiguration(section: section, isVisible: true, sortOrder: nextOrder))
+            nextOrder += 1
+        }
+        return result
     }
 }

@@ -151,7 +151,7 @@ public struct AddSourceSheet: View {
         } header: {
             Text("Direct HTTPS Stream")
         } footer: {
-            Text("Supports HTTPS HLS (.m3u8) and direct MP4/MOV/M4V links. Localhost and private IP addresses are blocked.")
+            Text("Supports HTTPS HLS (.m3u8), MP4/MOV/M4V, WebM (.webm), and DASH (.mpd) links. Localhost and private IP addresses are blocked.")
         }
     }
 

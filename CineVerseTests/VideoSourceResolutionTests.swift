@@ -33,7 +33,57 @@ private struct StubArchiveService: InternetArchiveServiceProtocol {
     }
 }
 
-@Suite("Category 3: Video Source Resolution, YouTube Parsing & Failover")
+private struct StubWikimediaService: WikimediaCinemaServiceProtocol {
+    var stubbedMatch: WikimediaVideoMatch? = nil
+
+    func resolveByFileTitle(_ fileTitle: String, originalLanguage: String) async throws -> WikimediaVideoMatch? {
+        stubbedMatch
+    }
+
+    func findFullLengthMatch(
+        title: String,
+        originalTitle: String,
+        year: Int,
+        expectedDurationMinutes: Int,
+        isEpisodic: Bool,
+        episodeTitle: String?,
+        originalLanguage: String
+    ) async throws -> WikimediaVideoMatch? {
+        stubbedMatch
+    }
+}
+
+private final class StubReachabilityHTTPClient: HTTPClient, @unchecked Sendable {
+    let statusByHost: [String: Int]
+    let contentTypeByHost: [String: String]
+
+    init(statusByHost: [String: Int], contentTypeByHost: [String: String] = [:]) {
+        self.statusByHost = statusByHost
+        self.contentTypeByHost = contentTypeByHost
+    }
+
+    func data(_ endpoint: Endpoint) async throws -> (Data, HTTPURLResponse) {
+        let host = endpoint.baseURL.host ?? ""
+        let code = statusByHost[host] ?? 200
+        let contentType = contentTypeByHost[host] ?? "video/mp4"
+        guard code < 400 else {
+            throw NetworkError.httpStatus(code: code, message: "HTTP \(code)")
+        }
+        let response = HTTPURLResponse(
+            url: endpoint.baseURL,
+            statusCode: code,
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Content-Type": contentType]
+        )!
+        return (Data(), response)
+    }
+
+    func decode<T: Decodable & Sendable>(_ endpoint: Endpoint, as type: T.Type, decoder: JSONDecoder) async throws -> T {
+        throw NetworkError.invalidResponse
+    }
+}
+
+@Suite("Category 3: Video Source Resolution, Health Verification & Trailer Separation")
 struct VideoSourceResolutionTests {
     @Test func parsesStandardWatchShortEmbedShortsAndLiveYouTubeURLs() throws {
         let watchURL = try #require(URL(string: "https://www.youtube.com/watch?v=zSWdZVtXT7E&feature=youtu.be"))
@@ -73,34 +123,72 @@ struct VideoSourceResolutionTests {
         #expect(Set(sources.compactMap { $0.playbackURL?.absoluteString }).count == sources.count)
     }
 
-    @Test func openStreamProviderDeduplicatesEmbeddedAndSearchedPreviewURLs() async {
-        let duplicateURL = URL.constant("https://video-ssl.itunes.apple.com/itunes-assets/sample1.m4v")
-        let uniqueURL = URL.constant("https://video-ssl.itunes.apple.com/itunes-assets/sample2.m4v")
+    @Test func openStreamProviderNeverSubstitutesShortITunesTrailersForFullMovies() async {
+        let previewURL = URL.constant("https://video-ssl.itunes.apple.com/itunes-assets/sample_trailer.m4v")
         let stub = StubITunesCatalogService(stubbedPreviews: [
-            ITunesPreviewMatch(url: duplicateURL, label: "Official Trailer · Cut 1"),
-            ITunesPreviewMatch(url: uniqueURL, label: "Official Trailer · Cut 2")
+            ITunesPreviewMatch(url: previewURL, label: "Official Trailer · Cut 1")
         ])
         let provider = OpenStreamSourceProvider(iTunesService: stub)
-        let movie = MediaItem(
+        let commercialMovie = MediaItem(
             id: "opencinema:movie:itunes-999",
-            externalIDs: [.openCinema: duplicateURL.absoluteString],
+            externalIDs: [.openCinema: previewURL.absoluteString],
             primarySource: .openCinema,
             projectType: .movie,
-            localizedTitle: "Sample Film",
-            originalTitle: "Sample Film",
+            localizedTitle: "Commercial Blockbuster",
+            originalTitle: "Commercial Blockbuster",
             synopsis: "",
             releaseYear: 2025,
             countryOfOrigin: "US",
             originalLanguage: "en",
             genres: ["Action"],
-            durationMinutes: 120,
+            durationMinutes: 132,
+            ratings: MultiSourceRatings(tmdbScore: 8.2),
+            trailerURL: previewURL
+        )
+
+        let sources = await provider.sources(for: commercialMovie, episode: nil)
+        #expect(sources.isEmpty)
+    }
+
+    @Test func wikimediaSourceProviderExposes4KWebMAndHardwareQuickTimeStreams() async {
+        let match = WikimediaVideoMatch(
+            fileTitle: "File:His Girl Friday (1940, SDR).webm",
+            durationSeconds: 5518,
+            primaryURL: URL.constant("https://upload.wikimedia.org/wikipedia/commons/2/24/His_Girl_Friday.webm"),
+            primaryFormat: .webm,
+            qualities: [
+                VideoQualityVariant(id: "q4k", tier: .p4K, width: 2960, height: 2160, variantStreamURL: URL.constant("https://upload.wikimedia.org/wikipedia/commons/2/24/His_Girl_Friday.webm"), variantFormat: .webm),
+                VideoQualityVariant(id: "q360", tier: .p360, width: 480, height: 360, variantStreamURL: URL.constant("https://upload.wikimedia.org/wikipedia/commons/transcoded/His_Girl_Friday.mov"), variantFormat: .mp4)
+            ],
+            subtitles: [
+                SubtitleTrackOption(id: "sub-ru", languageCode: "ru", displayName: "Russian", format: .webVTT, externalURL: URL.constant("https://commons.wikimedia.org/ru.vtt")),
+                SubtitleTrackOption(id: "sub-en", languageCode: "en", displayName: "English", format: .webVTT, externalURL: URL.constant("https://commons.wikimedia.org/en.vtt"))
+            ],
+            originalLanguage: "en"
+        )
+        let provider = WikimediaSourceProvider(service: StubWikimediaService(stubbedMatch: match))
+        let item = MediaItem(
+            id: "opencinema:movie:open-his-girl-friday",
+            externalIDs: [.openCinema: "wmfile:File:His Girl Friday (1940, SDR).webm"],
+            primarySource: .openCinema,
+            projectType: .movie,
+            localizedTitle: "His Girl Friday",
+            originalTitle: "His Girl Friday",
+            synopsis: "",
+            releaseYear: 1940,
+            countryOfOrigin: "US",
+            originalLanguage: "en",
+            genres: ["Comedy"],
+            durationMinutes: 92,
             ratings: MultiSourceRatings(tmdbScore: 7.9)
         )
 
-        let sources = await provider.sources(for: movie, episode: nil)
+        let sources = await provider.sources(for: item, episode: nil)
         #expect(sources.count == 2)
-        #expect(sources[0].providerName == "Official Trailer (Apple)")
-        #expect(sources[1].providerName == "Official Trailer · Cut 2")
+        #expect(sources[0].format == .webm)
+        #expect(sources[0].highestQualityLabel == "4K")
+        #expect(sources[0].availableSubtitles.count == 2)
+        #expect(sources[1].format == .mp4)
     }
 
     @Test func openStreamProviderIgnoresNonHTTPSAniListExternalIDEntry() async {
@@ -127,14 +215,21 @@ struct VideoSourceResolutionTests {
     @MainActor
     @Test func videoSourceManagerOrdersUserDirectLinksAheadOfOpenStreamsAndOfficialLinks() async throws {
         let container = try PersistenceController.makeContainer(inMemory: true)
-        let stubITunes = StubITunesCatalogService(stubbedPreviews: [
-            ITunesPreviewMatch(url: URL.constant("https://video-ssl.itunes.apple.com/preview.m4v"), label: "Official Trailer · Film")
-        ])
+        let wmMatch = WikimediaVideoMatch(
+            fileTitle: "File:Classic.webm",
+            durationSeconds: 5400,
+            primaryURL: URL.constant("https://upload.wikimedia.org/classic.webm"),
+            primaryFormat: .webm,
+            qualities: [VideoQualityVariant(id: "1080", tier: .p1080, width: 1920, height: 1080, variantStreamURL: URL.constant("https://upload.wikimedia.org/classic.webm"), variantFormat: .webm)],
+            subtitles: [],
+            originalLanguage: "en"
+        )
         let manager = VideoSourceManager(
             modelContext: container.mainContext,
             httpClient: URLSessionHTTPClient(),
             internetArchiveService: StubArchiveService(),
-            iTunesService: stubITunes
+            iTunesService: StubITunesCatalogService(),
+            wikimediaService: StubWikimediaService(stubbedMatch: wmMatch)
         )
         let item = MediaItem(
             id: "tmdb:movie:777",
@@ -143,11 +238,11 @@ struct VideoSourceResolutionTests {
             localizedTitle: "Priority Film",
             originalTitle: "Priority Film",
             synopsis: "",
-            releaseYear: 2025,
+            releaseYear: 1960,
             countryOfOrigin: "US",
             originalLanguage: "en",
-            genres: ["Sci-Fi"],
-            durationMinutes: 130,
+            genres: ["Drama"],
+            durationMinutes: 90,
             ratings: MultiSourceRatings(tmdbScore: 8.1),
             officialPlatformLinks: [
                 ExternalOfficialPlatformLink(id: "off-1", siteName: "Apple TV", url: URL.constant("https://tv.apple.com"))
@@ -165,8 +260,52 @@ struct VideoSourceResolutionTests {
         let resolved = await manager.resolveSources(for: item, episode: nil)
         #expect(resolved.count == 3)
         #expect(resolved[0].providerID == "direct_link")
-        #expect(resolved[1].providerID == "open_stream")
+        #expect(resolved[1].providerID == "wikimedia_cinema")
         #expect(resolved[2].providerID == "official_services")
+    }
+
+    @MainActor
+    @Test func sourceHealthVerificationMarksHealthyOnlineAndPrunesDeadURLs() async throws {
+        let container = try PersistenceController.makeContainer(inMemory: true)
+        let httpStub = StubReachabilityHTTPClient(
+            statusByHost: ["healthy.example.com": 200, "dead.example.com": 404],
+            contentTypeByHost: ["healthy.example.com": "video/mp4", "dead.example.com": "text/html"]
+        )
+        let manager = VideoSourceManager(
+            modelContext: container.mainContext,
+            httpClient: httpStub,
+            internetArchiveService: StubArchiveService(),
+            iTunesService: StubITunesCatalogService(),
+            wikimediaService: StubWikimediaService()
+        )
+
+        let healthy = VideoSourceDescriptor(
+            id: "s-ok",
+            providerID: "open_stream",
+            providerName: "Healthy CDN",
+            sourceDescription: "",
+            isAvailable: true,
+            format: .mp4,
+            playbackURL: URL.constant("https://healthy.example.com/movie.mp4")
+        )
+        let broken = VideoSourceDescriptor(
+            id: "s-404",
+            providerID: "open_stream",
+            providerName: "Broken CDN",
+            sourceDescription: "",
+            isAvailable: true,
+            format: .mp4,
+            playbackURL: URL.constant("https://dead.example.com/missing.mp4")
+        )
+
+        let verified = await manager.verifySourcesHealth([broken, healthy])
+        #expect(verified.count == 1)
+        #expect(verified[0].id == "s-ok")
+        if case .online = verified[0].healthStatus {
+            #expect(Bool(true))
+        } else {
+            Issue.record("Expected healthy stream to report .online status")
+        }
     }
 
     @Test func failoverPlannerSelectsNextUntriedDirectlyPlayableMirror() {
@@ -181,12 +320,13 @@ struct VideoSourceResolutionTests {
         #expect(exhausted == nil)
     }
 
-    @Test func failoverPlannerSkipsUnavailableDescriptors() {
+    @Test func failoverPlannerSkipsUnavailableAndOfflineDescriptors() {
         let dead = VideoSourceDescriptor(id: "s1", providerID: "local_file", providerName: "Missing File", sourceDescription: "", isAvailable: false, format: .localFile)
-        let live = VideoSourceDescriptor(id: "s2", providerID: "open_stream", providerName: "Live Stream", sourceDescription: "", isAvailable: true, format: .mp4, playbackURL: URL.constant("https://cdn.example.com/v.mp4"))
+        let offlineNet = VideoSourceDescriptor(id: "s2", providerID: "open_stream", providerName: "Offline", sourceDescription: "", isAvailable: true, format: .mp4, playbackURL: URL.constant("https://cdn.example.com/bad.mp4"), healthStatus: .offline(reason: "404"))
+        let live = VideoSourceDescriptor(id: "s3", providerID: "open_stream", providerName: "Live Stream", sourceDescription: "", isAvailable: true, format: .webm, playbackURL: URL.constant("https://cdn.example.com/v.webm"), healthStatus: .online(latencyMs: 120))
 
-        let picked = SourceFailoverPlanner.nextFallbackSource(afterFailedID: "s0", triedIDs: ["s0"], candidates: [dead, live])
-        #expect(picked?.id == "s2")
+        let picked = SourceFailoverPlanner.nextFallbackSource(afterFailedID: "s0", triedIDs: ["s0"], candidates: [dead, offlineNet, live])
+        #expect(picked?.id == "s3")
     }
 
     @MainActor
@@ -198,7 +338,8 @@ struct VideoSourceResolutionTests {
             modelContext: container.mainContext,
             httpClient: URLSessionHTTPClient(),
             internetArchiveService: StubArchiveService(),
-            iTunesService: StubITunesCatalogService()
+            iTunesService: StubITunesCatalogService(),
+            wikimediaService: StubWikimediaService()
         )
         let vm = PlaybackSetupViewModel(sourceManager: manager, libraryRepository: libRepo, settingsStore: settings)
 
@@ -209,11 +350,18 @@ struct VideoSourceResolutionTests {
         #expect(vm.isUserSource(openDesc) == false)
     }
 
-    @Test func videoStreamFormatFlagsDirectPlayabilityCorrectly() {
+    @Test func videoStreamFormatFlagsDirectPlayabilityAndWebMediaSurfaceCorrectly() {
         #expect(VideoStreamFormat.hls.isDirectlyPlayable == true)
         #expect(VideoStreamFormat.mp4.isDirectlyPlayable == true)
+        #expect(VideoStreamFormat.webm.isDirectlyPlayable == true)
+        #expect(VideoStreamFormat.dash.isDirectlyPlayable == true)
         #expect(VideoStreamFormat.localFile.isDirectlyPlayable == true)
         #expect(VideoStreamFormat.externalOfficialService.isDirectlyPlayable == false)
+
+        #expect(VideoStreamFormat.webm.usesWebMediaSurface == true)
+        #expect(VideoStreamFormat.dash.usesWebMediaSurface == true)
+        #expect(VideoStreamFormat.hls.usesWebMediaSurface == false)
+        #expect(VideoStreamFormat.mp4.usesWebMediaSurface == false)
     }
 
     @MainActor
@@ -223,7 +371,8 @@ struct VideoSourceResolutionTests {
             modelContext: container.mainContext,
             httpClient: URLSessionHTTPClient(),
             internetArchiveService: StubArchiveService(),
-            iTunesService: StubITunesCatalogService()
+            iTunesService: StubITunesCatalogService(),
+            wikimediaService: StubWikimediaService()
         )
         let item = MediaItem(
             id: "tmdb:movie:888",

@@ -25,10 +25,14 @@ public actor MediaSourceInspector {
         case .mp4, .localFile:
             guard let url = descriptor.playbackURL else { return descriptor }
             updated = await inspectAVAsset(descriptor, url: url, originalLanguage: originalLanguage)
+        case .webm, .dash:
+            guard let url = descriptor.playbackURL else { return descriptor }
+            updated = inspectWebMedia(descriptor, url: url, originalLanguage: originalLanguage)
         case .externalOfficialService:
             return descriptor
         }
 
+        updated.availableAudioTracks = AudioTrackNormalizer.normalize(updated.availableAudioTracks)
         return updated
     }
 
@@ -77,7 +81,8 @@ public actor MediaSourceInspector {
         var seenAudioKeys: Set<String> = []
         var dedupedAudio: [AudioTrackOption] = []
         for track in parsed.audioTracks {
-            let key = "\(track.languageCode.lowercased())|\(track.voiceoverStudio.lowercased())"
+            let uriPart = track.dedicatedAudioStreamURL?.absoluteString ?? track.hlsGroupID ?? ""
+            let key = "\(track.languageCode.lowercased())|\(track.voiceoverStudio.lowercased())|\(uriPart)"
             if seenAudioKeys.insert(key).inserted {
                 dedupedAudio.append(track)
             }
@@ -191,6 +196,28 @@ public actor MediaSourceInspector {
         )
     }
 
+    private func inspectWebMedia(
+        _ descriptor: VideoSourceDescriptor,
+        url: URL,
+        originalLanguage: String
+    ) -> VideoSourceDescriptor {
+        var result = descriptor
+        if result.availableQualities.isEmpty {
+            result.availableQualities = [
+                VideoQualityVariant(
+                    id: "web-auto",
+                    tier: .auto,
+                    variantStreamURL: url,
+                    variantFormat: descriptor.format
+                )
+            ]
+        }
+        if result.availableAudioTracks.isEmpty {
+            result.availableAudioTracks = [defaultAudioTrack(languageCode: originalLanguage, studio: "Original Audio")]
+        }
+        return result
+    }
+
     private func mergeSubtitles(
         existing: [SubtitleTrackOption],
         discovered: [SubtitleTrackOption]
@@ -203,5 +230,67 @@ public actor MediaSourceInspector {
             }
         }
         return combined
+    }
+}
+
+public enum AudioTrackNormalizer {
+    public static func normalize(_ tracks: [AudioTrackOption]) -> [AudioTrackOption] {
+        guard tracks.count > 1 else { return tracks }
+
+        // Count how many non-original tracks share the same language AND generic/identical studio label
+        var countsByLangAndName: [String: Int] = [:]
+        for track in tracks where !track.isOriginal {
+            let key = "\(track.languageCode.lowercased())|\(genericKey(for: track))"
+            countsByLangAndName[key, default: 0] += 1
+        }
+
+        var runningIndexByKey: [String: Int] = [:]
+        return tracks.map { track in
+            guard !track.isOriginal else { return track }
+            let key = "\(track.languageCode.lowercased())|\(genericKey(for: track))"
+            guard (countsByLangAndName[key] ?? 0) > 1 else {
+                // Single dub in this language: if studio merely repeats language name, clarify as "<Language> Dub"
+                if track.voiceoverStudio.lowercased() == track.displayName.lowercased() {
+                    return AudioTrackOption(
+                        id: track.id,
+                        languageCode: track.languageCode,
+                        displayName: track.displayName,
+                        voiceoverStudio: "\(track.displayName) Dub",
+                        voiceoverKind: .dub,
+                        isOriginal: false,
+                        isDefault: track.isDefault,
+                        hlsGroupID: track.hlsGroupID,
+                        dedicatedAudioStreamURL: track.dedicatedAudioStreamURL,
+                        alternateMuxedVideoURL: track.alternateMuxedVideoURL,
+                        channelCount: track.channelCount
+                    )
+                }
+                return track
+            }
+
+            let nextNum = (runningIndexByKey[key] ?? 0) + 1
+            runningIndexByKey[key] = nextNum
+            return AudioTrackOption(
+                id: track.id,
+                languageCode: track.languageCode,
+                displayName: track.displayName,
+                voiceoverStudio: "\(track.displayName) Dub \(nextNum)",
+                voiceoverKind: .dub,
+                isOriginal: false,
+                isDefault: track.isDefault,
+                hlsGroupID: track.hlsGroupID,
+                dedicatedAudioStreamURL: track.dedicatedAudioStreamURL,
+                alternateMuxedVideoURL: track.alternateMuxedVideoURL,
+                channelCount: track.channelCount
+            )
+        }
+    }
+
+    private static func genericKey(for track: AudioTrackOption) -> String {
+        let lower = track.voiceoverStudio.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        if lower.isEmpty || lower == track.displayName.lowercased() || lower.hasPrefix("embedded track") || lower == "audio" || lower == "dub" {
+            return "generic"
+        }
+        return lower
     }
 }

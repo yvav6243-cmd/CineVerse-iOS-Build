@@ -56,10 +56,30 @@ struct OpenCinemaLibraryTests {
     @Test func allOpenCinemaItemsCarryPositiveDurationsYearsAndRatings() {
         for item in OpenCinemaLibrary.items {
             #expect(item.durationMinutes > 0)
-            #expect(item.releaseYear >= 2000)
+            #expect(item.releaseYear >= 1920)
             #expect(item.displayRating >= 7.0)
             #expect(item.primarySource == .openCinema)
         }
+    }
+
+    @Test func includesFullLength4KAnd1080pFeatureFilmsAndPlayableAnimatedSeries() async throws {
+        let ids = Set(OpenCinemaLibrary.items.map(\.id))
+        #expect(ids.contains("opencinema:movie:open-his-girl-friday"))
+        #expect(ids.contains("opencinema:movie:open-charade-1963"))
+        #expect(ids.contains("opencinema:movie:open-night-living-dead"))
+        #expect(ids.contains("opencinema:movie:open-gullivers-travels"))
+        #expect(ids.contains("opencinema:tv:open-superman-series"))
+
+        let superman = try #require(OpenCinemaLibrary.items.first { $0.id == "opencinema:tv:open-superman-series" })
+        #expect(superman.projectType.isEpisodic == true)
+        #expect(superman.seasons.count == 1)
+        #expect(superman.seasons[0].episodes.count == 4)
+        #expect(superman.seasons[0].episodes[0].introStartSeconds == 4)
+        #expect(superman.seasons[0].episodes[0].introEndSeconds == 44)
+
+        let service = ITunesCatalogService(httpClient: URLSessionHTTPClient())
+        let lookedUpSeries = try await service.lookupDetails(providerID: "open-superman-series")
+        #expect(lookedUpSeries?.id == "opencinema:tv:open-superman-series")
     }
 
     @Test func iTunesServiceExposesOpenCinemaShowcaseAndPrimaryStreamLookup() {

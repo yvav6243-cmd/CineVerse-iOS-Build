@@ -39,25 +39,37 @@ public enum WatchTrackingStatus: String, Codable, CaseIterable, Identifiable, Se
 
 public enum HomeSectionType: String, Codable, CaseIterable, Identifiable, Sendable {
     case continueWatching = "Continue Watching"
-    case recentlyAdded = "Recently Added"
+    case trendingNow = "Trending Now"
     case trendingMovies = "Trending Movies"
     case popularAnime = "Popular Anime"
     case popularTVShows = "Popular TV Shows"
-    case upcomingReleases = "Upcoming Releases"
+    case newEpisodes = "New Episodes"
+    case recentlyAdded = "Recently Added"
     case recommendedForYou = "Recommended For You"
+    case upcomingReleases = "Upcoming Releases"
     case topRated = "Top Rated"
     case recentlyWatched = "Recently Watched"
     case yourFavorites = "Your Favorites"
 
     public var id: String { rawValue }
 
+    public var displayTitle: String {
+        switch self {
+        case .trendingMovies: return "Popular Movies"
+        case .popularTVShows: return "TV Shows"
+        default: return rawValue
+        }
+    }
+
     public var subtitle: String {
         switch self {
         case .continueWatching: return "Pick up right where you left off"
+        case .trendingNow: return "Full-length 4K/HD cinema & top hits right now"
         case .recentlyAdded: return "Fresh arrivals across catalogs"
         case .trendingMovies: return "Most watched cinema right now"
         case .popularAnime: return "Top seasonal & all-time anime series"
         case .popularTVShows: return "Critically acclaimed television"
+        case .newEpisodes: return "Currently airing series & fresh episodes"
         case .upcomingReleases: return "Premieres arriving soon"
         case .recommendedForYou: return "Curated locally from your taste profile"
         case .topRated: return "Highest scored projects across platforms"
@@ -69,10 +81,12 @@ public enum HomeSectionType: String, Codable, CaseIterable, Identifiable, Sendab
     public var symbolName: String {
         switch self {
         case .continueWatching: return "play.tv"
+        case .trendingNow: return "bolt.fill"
         case .recentlyAdded: return "sparkles.rectangle.stack"
         case .trendingMovies: return "flame.fill"
         case .popularAnime: return "sparkles.tv"
         case .popularTVShows: return "tv.fill"
+        case .newEpisodes: return "badge.plus.radiowaves.right"
         case .upcomingReleases: return "calendar.badge.plus"
         case .recommendedForYou: return "wand.and.stars"
         case .topRated: return "trophy.fill"

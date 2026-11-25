@@ -121,4 +121,66 @@ struct PlaybackQualityEngineTests {
         let empty = MultiSourceRatings()
         #expect(empty.compositeScore == 0)
     }
+
+    @Test func preferredVariantEnforces4KAnd2KPriorityOverLowerResolutions() {
+        let variants = [
+            VideoQualityVariant(id: "auto", tier: .auto),
+            VideoQualityVariant(id: "720", tier: .p720, width: 1280, height: 720),
+            VideoQualityVariant(id: "1080", tier: .p1080, width: 1920, height: 1080),
+            VideoQualityVariant(id: "1440", tier: .p1440, width: 2560, height: 1440),
+            VideoQualityVariant(id: "2160", tier: .p4K, width: 3840, height: 2160)
+        ]
+
+        let bestDefault = PlaybackQualityDiagnostics.selectPreferredVariant(from: variants, preferredTier: nil, format: .webm)
+        #expect(bestDefault?.tier == .p4K)
+
+        let explicit2K = PlaybackQualityDiagnostics.selectPreferredVariant(from: variants, preferredTier: .p1440, format: .webm)
+        #expect(explicit2K?.tier == .p1440)
+
+        let adaptiveHLS = PlaybackQualityDiagnostics.selectPreferredVariant(from: variants, preferredTier: .auto, format: .hls)
+        #expect(adaptiveHLS?.tier == .auto)
+
+        let nonHLSAutoPicksHighest = PlaybackQualityDiagnostics.selectPreferredVariant(from: variants, preferredTier: .auto, format: .webm)
+        #expect(nonHLSAutoPicksHighest?.tier == .p4K)
+    }
+
+    @Test func fullTechnicalSummaryReportsRealDecodedDimensionsCodecFPSAndHDR() {
+        let hdr4K = PlaybackQualityDiagnostics(
+            videoWidth: 3840,
+            videoHeight: 2160,
+            observedBitrateBitsPerSecond: 18_400_000,
+            framesPerSecond: 24,
+            dynamicRange: "Dolby Vision",
+            videoCodec: "HEVC"
+        )
+        #expect(hdr4K.fullTechnicalSummary == "3840×2160 (4K UHD) · Dolby Vision · HEVC · 24 fps · 18.4 Mbps")
+
+        let honestSD = PlaybackQualityDiagnostics(
+            videoWidth: 640,
+            videoHeight: 360,
+            observedBitrateBitsPerSecond: 850_000,
+            framesPerSecond: 29.97,
+            dynamicRange: "SDR",
+            videoCodec: "H.264"
+        )
+        #expect(honestSD.resolutionBadge == "360p SD")
+        #expect(honestSD.fullTechnicalSummary.contains("640×360 (360p SD)"))
+        #expect(!honestSD.fullTechnicalSummary.contains("4K"))
+    }
+
+    @Test func audioTrackNormalizerNumbersUnnamedDuplicateDubsWithoutInventingStudios() {
+        let tracks = [
+            AudioTrackOption(id: "orig", languageCode: "ja", displayName: "Japanese", voiceoverStudio: "Original Audio", isOriginal: true),
+            AudioTrackOption(id: "ru1", languageCode: "ru", displayName: "Russian", voiceoverStudio: "Russian", isOriginal: false),
+            AudioTrackOption(id: "ru2", languageCode: "ru", displayName: "Russian", voiceoverStudio: "Russian", isOriginal: false),
+            AudioTrackOption(id: "en1", languageCode: "en", displayName: "English", voiceoverStudio: "English", isOriginal: false)
+        ]
+
+        let normalized = AudioTrackNormalizer.normalize(tracks)
+        #expect(normalized.count == 4)
+        #expect(normalized[0].isOriginal == true)
+        #expect(normalized[1].voiceoverStudio == "Russian Dub 1")
+        #expect(normalized[2].voiceoverStudio == "Russian Dub 2")
+        #expect(normalized[3].voiceoverStudio == "English Dub")
+    }
 }

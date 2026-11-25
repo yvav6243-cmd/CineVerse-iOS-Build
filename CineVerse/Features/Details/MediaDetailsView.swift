@@ -201,7 +201,8 @@ public struct MediaDetailsView: View {
         let cta = viewModel.primaryWatchCTA
         return DetailsActionBar(
             primaryCTATitle: cta.title,
-            hasPlayableSource: playbackSetupVM.hasPlayableSource || item.trailerURL != nil,
+            hasPlayableSource: playbackSetupVM.hasPlayableSource,
+            hasTrailer: item.trailerURL != nil,
             trackingStatus: viewModel.libraryEntry?.status,
             inWatchlist: viewModel.libraryEntry?.inWatchlist ?? false,
             isFavorite: viewModel.libraryEntry?.isFavorite ?? false,
@@ -210,6 +211,11 @@ public struct MediaDetailsView: View {
             shareTitle: item.localizedTitle,
             onPrimaryWatch: {
                 launchOrPromptAddSource(item: item, episode: cta.targetEpisode, startPosition: cta.startPositionSeconds, scrollProxy: scrollProxy)
+            },
+            onWatchTrailer: {
+                if let trailerURL = item.trailerURL {
+                    handleTrailerURL(trailerURL, for: item, allowSafariFallback: true)
+                }
             },
             onAddToList: { showAddToListSheet = true },
             onMarkWatched: { viewModel.markAllWatched() },
@@ -387,10 +393,6 @@ public struct MediaDetailsView: View {
             }
             if let selection = playbackSetupVM.buildPlaybackSelection(startPositionSeconds: startPosition) {
                 container.coordinator.presentPlayer(selection)
-            } else if let trailerURL = item.trailerURL, isDirectVideoURL(trailerURL) {
-                await playDirectTrailer(url: trailerURL, item: item)
-            } else if let trailerURL = item.trailerURL, let videoID = EmbeddedTrailerItem.youTubeID(from: trailerURL) {
-                embeddedTrailer = EmbeddedTrailerItem(videoID: videoID, title: item.localizedTitle)
             } else {
                 withAnimation(CVMotion.spring) { scrollProxy.scrollTo("playbackSetup", anchor: .top) }
             }

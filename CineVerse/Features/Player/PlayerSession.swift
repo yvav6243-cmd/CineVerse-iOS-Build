@@ -72,7 +72,7 @@ public final class PlayerSession {
         let currentEp = selection.episode
         Task {
             alternativeSources = await sourceManager
-                .resolveSources(for: currentItem, episode: currentEp)
+                .resolveSources(for: currentItem, episode: currentEp, verifyReachability: true)
                 .filter { $0.isAvailable && $0.format.isDirectlyPlayable }
         }
         Task {
@@ -98,7 +98,7 @@ public final class PlayerSession {
 
         let preferredTier = engine.selectedQuality?.tier
         let nextQuality = inspected.availableQualities.first(where: { $0.tier == preferredTier })
-            ?? inspected.availableQualities.first
+            ?? PlaybackQualityDiagnostics.selectPreferredVariant(from: inspected.availableQualities)
             ?? VideoQualityVariant(id: "auto", tier: .auto, variantStreamURL: inspected.playbackURL)
 
         let preferredAudioLang = engine.selectedAudioTrack?.languageCode.lowercased()
@@ -176,6 +176,21 @@ public final class PlayerSession {
         guard let nextSelection else { return }
         persistProgress(force: true)
         loadSelection(nextSelection)
+    }
+
+    public func switchEpisode(to episode: MediaEpisode) async {
+        guard episode.id != selection.episode?.id else { return }
+        isSwitchingSource = true
+        defer { isSwitchingSource = false }
+        guard let targetSelection = await sourceManager.nextEpisodeSelection(after: selection, nextEpisode: episode) else {
+            return
+        }
+        persistProgress(force: true)
+        loadSelection(targetSelection)
+        let currentItem = targetSelection.mediaItem
+        alternativeSources = await sourceManager
+            .resolveSources(for: currentItem, episode: episode, verifyReachability: true)
+            .filter { $0.isAvailable && $0.format.isDirectlyPlayable }
     }
 
     public func cancelUpNext() {

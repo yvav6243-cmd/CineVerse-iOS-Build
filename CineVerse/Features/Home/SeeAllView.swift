@@ -30,7 +30,7 @@ public struct SeeAllView: View {
         } action: { newWidth in
             containerWidth = newWidth
         }
-        .navigationTitle(LocalizedStringKey(section.rawValue))
+        .navigationTitle(LocalizedStringKey(section.displayTitle))
         .navigationBarTitleDisplayMode(.large)
         .refreshable {
             await viewModel.loadInitial(forceRefresh: true)

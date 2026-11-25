@@ -204,7 +204,7 @@ public enum TMDBMapper {
             }
         }
 
-        let seasons = (dto.seasons ?? [])
+        let regularSeasons = (dto.seasons ?? [])
             .filter { $0.seasonNumber > 0 }
             .sorted { $0.seasonNumber < $1.seasonNumber }
             .map { season in
@@ -219,6 +219,23 @@ public enum TMDBMapper {
                     episodes: []
                 )
             }
+
+        let specialsSeasons = (dto.seasons ?? [])
+            .filter { $0.seasonNumber == 0 && ($0.episodeCount ?? 0) > 0 }
+            .map { special in
+                MediaSeason(
+                    id: "tmdb:tv:\(dto.id):s0",
+                    seasonNumber: 0,
+                    title: "Specials & OVAs",
+                    overview: special.overview ?? "",
+                    episodeCount: special.episodeCount ?? 0,
+                    posterURL: imageURL(path: special.posterPath, size: "w342"),
+                    releaseYear: special.airDate.flatMap { Int($0.prefix(4)) },
+                    episodes: []
+                )
+            }
+
+        let seasons = regularSeasons + specialsSeasons
 
         let nextAirDate = dto.nextEpisodeToAir?.airDate.flatMap {
             CineVerseDateFormatters.isoDateParser.date(from: $0)
@@ -239,7 +256,7 @@ public enum TMDBMapper {
             ageRating: rating,
             genres: genres,
             durationMinutes: dto.episodeRunTime?.first ?? 45,
-            totalSeasons: max(dto.numberOfSeasons ?? seasons.count, 1),
+            totalSeasons: max(dto.numberOfSeasons ?? regularSeasons.count, 1),
             totalEpisodes: max(dto.numberOfEpisodes ?? 1, 1),
             releaseStatus: mapTVStatus(dto.status),
             ratings: MultiSourceRatings(tmdbScore: dto.voteAverage, voteCount: dto.voteCount),

@@ -3,6 +3,7 @@ import SwiftUI
 public struct DetailsActionBar: View {
     let primaryCTATitle: String
     let hasPlayableSource: Bool
+    let hasTrailer: Bool
     let trackingStatus: WatchTrackingStatus?
     let inWatchlist: Bool
     let isFavorite: Bool
@@ -11,6 +12,7 @@ public struct DetailsActionBar: View {
     let shareTitle: String
 
     let onPrimaryWatch: () -> Void
+    let onWatchTrailer: () -> Void
     let onAddToList: () -> Void
     let onMarkWatched: () -> Void
     let onToggleFavorite: () -> Void
@@ -18,6 +20,7 @@ public struct DetailsActionBar: View {
     public init(
         primaryCTATitle: String,
         hasPlayableSource: Bool,
+        hasTrailer: Bool = false,
         trackingStatus: WatchTrackingStatus?,
         inWatchlist: Bool,
         isFavorite: Bool,
@@ -25,12 +28,14 @@ public struct DetailsActionBar: View {
         shareURL: URL?,
         shareTitle: String,
         onPrimaryWatch: @escaping () -> Void,
+        onWatchTrailer: @escaping () -> Void = {},
         onAddToList: @escaping () -> Void,
         onMarkWatched: @escaping () -> Void,
         onToggleFavorite: @escaping () -> Void
     ) {
         self.primaryCTATitle = primaryCTATitle
         self.hasPlayableSource = hasPlayableSource
+        self.hasTrailer = hasTrailer
         self.trackingStatus = trackingStatus
         self.inWatchlist = inWatchlist
         self.isFavorite = isFavorite
@@ -38,6 +43,7 @@ public struct DetailsActionBar: View {
         self.shareURL = shareURL
         self.shareTitle = shareTitle
         self.onPrimaryWatch = onPrimaryWatch
+        self.onWatchTrailer = onWatchTrailer
         self.onAddToList = onAddToList
         self.onMarkWatched = onMarkWatched
         self.onToggleFavorite = onToggleFavorite
@@ -45,19 +51,31 @@ public struct DetailsActionBar: View {
 
     public var body: some View {
         VStack(spacing: CVSpacing.sm) {
-            Button {
-                Haptics.impact(.medium)
-                onPrimaryWatch()
-            } label: {
-                HStack(spacing: CVSpacing.xs) {
-                    Image(systemName: hasPlayableSource ? "play.fill" : "play.tv")
-                        .font(.subheadline.weight(.bold))
-                    Text(primaryCTATitle)
-                        .lineLimit(1)
+            HStack(spacing: CVSpacing.xs) {
+                Button {
+                    Haptics.impact(.medium)
+                    onPrimaryWatch()
+                } label: {
+                    HStack(spacing: CVSpacing.xs) {
+                        Image(systemName: hasPlayableSource ? "play.fill" : "play.tv")
+                            .font(.subheadline.weight(.bold))
+                        Text(hasPlayableSource ? primaryCTATitle : "Select Video Source")
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
+                .buttonStyle(CVPrimaryButtonStyle())
+
+                if hasTrailer {
+                    Button {
+                        Haptics.selection()
+                        onWatchTrailer()
+                    } label: {
+                        Label("Trailer", systemImage: "film")
+                    }
+                    .buttonStyle(CVGlassButtonStyle())
+                }
             }
-            .buttonStyle(CVPrimaryButtonStyle())
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: CVSpacing.xs) {

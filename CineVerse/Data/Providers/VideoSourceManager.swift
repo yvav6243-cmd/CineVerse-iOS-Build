@@ -7,6 +7,7 @@ import Observation
 public final class VideoSourceManager {
     private let providers: [VideoSourceProvider]
     private let inspector: MediaSourceInspector
+    private let healthChecker: SourceHealthChecker
     private let modelContext: ModelContext
     private let videoStore: LocalVideoStore
 
@@ -15,11 +16,13 @@ public final class VideoSourceManager {
         httpClient: HTTPClient,
         internetArchiveService: InternetArchiveServiceProtocol,
         iTunesService: ITunesCatalogServiceProtocol = ITunesCatalogService(httpClient: URLSessionHTTPClient()),
+        wikimediaService: WikimediaCinemaServiceProtocol? = nil,
         videoStore: LocalVideoStore = .shared
     ) {
         self.modelContext = modelContext
         self.videoStore = videoStore
         self.inspector = MediaSourceInspector(httpClient: httpClient)
+        self.healthChecker = SourceHealthChecker(httpClient: httpClient)
 
         let fetchClosure: @MainActor (String, Int?, Int?) -> [UserVideoSourceDTO] = { mediaID, season, episode in
             let descriptor = FetchDescriptor<UserVideoSourceRecord>(
@@ -36,16 +39,22 @@ public final class VideoSourceManager {
             .map { $0.toDTO() }
         }
 
+        let resolvedWikimedia = wikimediaService ?? WikimediaCinemaService(httpClient: httpClient)
         self.providers = [
             LocalFileSourceProvider(videoStore: videoStore, fetchSources: fetchClosure),
             DirectLinkSourceProvider(videoStore: videoStore, fetchSources: fetchClosure),
             OpenStreamSourceProvider(iTunesService: iTunesService),
+            WikimediaSourceProvider(service: resolvedWikimedia),
             InternetArchiveSourceProvider(service: internetArchiveService),
             OfficialServicesProvider()
         ]
     }
 
-    public func resolveSources(for item: MediaItem, episode: MediaEpisode?) async -> [VideoSourceDescriptor] {
+    public func resolveSources(
+        for item: MediaItem,
+        episode: MediaEpisode?,
+        verifyReachability: Bool = false
+    ) async -> [VideoSourceDescriptor] {
         var batches: [(providerIndex: Int, items: [VideoSourceDescriptor])] = []
 
         await withTaskGroup(of: (Int, [VideoSourceDescriptor]).self) { group in
@@ -73,7 +82,7 @@ public final class VideoSourceManager {
                 }
             }
 
-        return orderedEntries.sorted { lhs, rhs in
+        let sorted = orderedEntries.sorted { lhs, rhs in
             if lhs.formatPriority != rhs.formatPriority {
                 return lhs.formatPriority < rhs.formatPriority
             }
@@ -83,6 +92,31 @@ public final class VideoSourceManager {
             return lhs.originalIndex < rhs.originalIndex
         }
         .map(\.descriptor)
+
+        guard verifyReachability else {
+            return sorted.filter { $0.isAvailable || $0.format == .externalOfficialService }
+        }
+
+        return await verifySourcesHealth(sorted)
+    }
+
+    public func verifySourcesHealth(_ descriptors: [VideoSourceDescriptor]) async -> [VideoSourceDescriptor] {
+        var indexed: [(Int, VideoSourceDescriptor)] = []
+        await withTaskGroup(of: (Int, VideoSourceDescriptor).self) { group in
+            for (idx, desc) in descriptors.enumerated() {
+                group.addTask { [healthChecker] in
+                    let checked = await healthChecker.check(desc)
+                    return (idx, checked)
+                }
+            }
+            for await pair in group {
+                indexed.append(pair)
+            }
+        }
+        return indexed
+            .sorted { $0.0 < $1.0 }
+            .map(\.1)
+            .filter { $0.format == .externalOfficialService || ($0.isAvailable && $0.healthStatus.isHealthyOrUnchecked) }
     }
 
     public func inspect(_ descriptor: VideoSourceDescriptor, originalLanguage: String) async -> VideoSourceDescriptor {
@@ -170,8 +204,8 @@ public final class VideoSourceManager {
         }
         let inspected = await inspect(chosenSource, originalLanguage: current.mediaItem.originalLanguage)
         let quality = inspected.availableQualities.first(where: { $0.tier == current.selectedQuality.tier })
-            ?? inspected.availableQualities.first
-            ?? VideoQualityVariant(id: "auto", tier: .auto)
+            ?? PlaybackQualityDiagnostics.selectPreferredVariant(from: inspected.availableQualities)
+            ?? VideoQualityVariant(id: "auto", tier: .auto, variantStreamURL: inspected.playbackURL)
         let audio = inspected.availableAudioTracks.first(where: { $0.languageCode == current.selectedAudioTrack.languageCode })
             ?? inspected.availableAudioTracks.first
             ?? AudioTrackOption(id: "default", languageCode: current.mediaItem.originalLanguage, displayName: "Default", voiceoverStudio: "Audio", isOriginal: true, isDefault: true)
@@ -199,7 +233,7 @@ public final class VideoSourceManager {
     private static func priority(for format: VideoStreamFormat) -> Int {
         switch format {
         case .localFile: return 0
-        case .hls, .mp4: return 1
+        case .hls, .mp4, .webm, .dash: return 1
         case .externalOfficialService: return 2
         }
     }
@@ -209,8 +243,9 @@ public final class VideoSourceManager {
         case "local_file": return 0
         case "direct_link": return 1
         case "open_stream": return 2
-        case "internet_archive": return 3
-        case "official_services": return 4
+        case "wikimedia_cinema": return 3
+        case "internet_archive": return 4
+        case "official_services": return 5
         default: return 10 + fallback
         }
     }

@@ -190,4 +190,66 @@ struct MapperDecodingTests {
         #expect(MediaReference(id: "tmdb:podcast:123") == nil)
         #expect(MediaReference(id: "tmdb:movie:") == nil)
     }
+
+    @Test func tmdbTVDetailsSeparatesSeasonZeroSpecialsAfterRegularSeasons() throws {
+        let tvJSON = """
+        {
+          "id": 2001,
+          "name": "Epic Anime",
+          "original_name": "Epic Anime",
+          "overview": "Overview",
+          "first_air_date": "2024-01-10",
+          "number_of_seasons": 2,
+          "number_of_episodes": 24,
+          "seasons": [
+            {"id": 10, "season_number": 0, "name": "Specials", "episode_count": 3},
+            {"id": 12, "season_number": 2, "name": "Season 2", "episode_count": 12},
+            {"id": 11, "season_number": 1, "name": "Season 1", "episode_count": 12}
+          ]
+        }
+        """
+        let dto = try JSONDecoder().decode(TMDBTVDetailsDTO.self, from: Data(tvJSON.utf8))
+        let item = TMDBMapper.mapTVDetails(dto, watchRegion: "US")
+        #expect(item.totalSeasons == 2)
+        #expect(item.seasons.count == 3)
+        #expect(item.seasons[0].seasonNumber == 1)
+        #expect(item.seasons[1].seasonNumber == 2)
+        #expect(item.seasons[2].seasonNumber == 0)
+        #expect(item.seasons[2].title == "Specials & OVAs")
+    }
+
+    @Test func aniListMapperClassifiesOVAsAndMoviesAsNonEpisodicAndStripsPromotionalTrailers() throws {
+        let ovaJSON = """
+        {"id": 3001, "format": "OVA", "episodes": 2, "title": {"english": "Bonus OVA"}}
+        """
+        let ovaDTO = try JSONDecoder().decode(AniListMediaDTO.self, from: Data(ovaJSON.utf8))
+        let ovaItem = AniListMapper.mapMedia(ovaDTO)
+        #expect(ovaItem.projectType == .special)
+        #expect(ovaItem.seasons.isEmpty)
+
+        let tvWithPromoJSON = """
+        {
+          "id": 3002,
+          "format": "TV",
+          "episodes": 2,
+          "title": {"english": "Real Series"},
+          "streamingEpisodes": [
+            {"title": "Official Trailer"},
+            {"title": "Episode 1 - Awakening"},
+            {"title": "Episode 2 - Departure"}
+          ]
+        }
+        """
+        let tvDTO = try JSONDecoder().decode(AniListMediaDTO.self, from: Data(tvWithPromoJSON.utf8))
+        let tvItem = AniListMapper.mapMedia(tvDTO)
+        #expect(tvItem.seasons.first?.episodes.count == 2)
+        #expect(tvItem.seasons.first?.episodes.first?.title == "Episode 1 - Awakening")
+    }
+
+    @Test func homeSectionDisplayTitlesMatchRedesignedHeaders() {
+        #expect(HomeSectionType.trendingNow.displayTitle == "Trending Now")
+        #expect(HomeSectionType.trendingMovies.displayTitle == "Popular Movies")
+        #expect(HomeSectionType.popularTVShows.displayTitle == "TV Shows")
+        #expect(HomeSectionType.newEpisodes.displayTitle == "New Episodes")
+    }
 }
