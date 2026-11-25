@@ -90,7 +90,7 @@ public final class WikimediaCinemaService: WikimediaCinemaServiceProtocol, @unch
         )
 
         let root = try await httpClient.send(endpoint, as: WikimediaQueryRootDTO.self)
-        let pages = Array(root.query?.pages?.values ?? [])
+        let pages: [WikimediaPageDTO] = root.query?.pages.map { Array($0.values) } ?? []
         let normTitle = title.normalizedForComparison
         let normOrig = originalTitle.normalizedForComparison
         let normEp = episodeTitle?.normalizedForComparison ?? ""
