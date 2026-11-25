@@ -46,6 +46,7 @@ private struct StubEmptyWikimediaService: WikimediaCinemaServiceProtocol {
 struct UniversalCatalogAndSourcesTests {
     private func sampleItem(
         id: String = "tmdb:movie:999",
+        externalIDs: [MetadataProviderSource: String] = [:],
         source: MetadataProviderSource = .tmdb,
         type: MediaProjectType = .movie,
         status: MediaReleaseStatus = .finished,
@@ -56,6 +57,7 @@ struct UniversalCatalogAndSourcesTests {
     ) -> MediaItem {
         MediaItem(
             id: id,
+            externalIDs: externalIDs,
             primarySource: source,
             projectType: type,
             localizedTitle: "Universal Test Film",
@@ -222,8 +224,8 @@ struct UniversalCatalogAndSourcesTests {
     }
 
     @Test func mediaMergerMergesAcrossAllCatalogSourcesWithoutDuplicates() {
-        let wd = sampleItem(id: "wikidata:movie:Q55", source: .wikidata, type: .movie, trailerURL: nil)
-        var tmdb = sampleItem(id: "tmdb:movie:55", source: .tmdb, type: .movie, trailerURL: URL.constant("https://youtube.com/watch?v=12345678901"))
+        let wd = sampleItem(id: "wikidata:movie:Q55", externalIDs: [.wikidata: "Q55"], source: .wikidata, type: .movie, trailerURL: nil)
+        var tmdb = sampleItem(id: "tmdb:movie:55", externalIDs: [.tmdb: "55"], source: .tmdb, type: .movie, trailerURL: URL.constant("https://youtube.com/watch?v=12345678901"))
         let ia = MediaItem(
             id: "archive:movie:universal-test",
             externalIDs: [.internetArchive: "universal-test"],
@@ -285,9 +287,10 @@ struct UniversalCatalogAndSourcesTests {
     @MainActor
     @Test func videoSourceManagerTracksUserSourcesAndRespectsProviderToggles() async throws {
         let container = try PersistenceController.makeContainer(inMemory: true)
+        let stubHTTP = StubUniversalHTTPClient { _ in (Data(#"{"data":[]}"#.utf8), 200) }
         let manager = VideoSourceManager(
             modelContext: container.mainContext,
-            httpClient: URLSessionHTTPClient(),
+            httpClient: stubHTTP,
             internetArchiveService: StubEmptyArchiveService(),
             iTunesService: StubEmptyITunesService(),
             wikimediaService: StubEmptyWikimediaService()
