@@ -43,6 +43,8 @@ public final class PlayerSession {
     private var hasMarkedWatchedCurrent: Bool = false
     private var hasEvaluatedUpNext: Bool = false
     private var upNextTask: Task<Void, Never>?
+    private var alternativeSourcesTask: Task<Void, Never>?
+    private var artworkTask: Task<Void, Never>?
     private var cachedArtwork: UIImage?
 
     public init(
@@ -73,19 +75,25 @@ public final class PlayerSession {
         configureRemoteCommands()
         let currentItem = selection.mediaItem
         let currentEp = selection.episode
-        Task {
-            alternativeSources = await sourceManager
+        alternativeSourcesTask?.cancel()
+        alternativeSourcesTask = Task { [weak self] in
+            guard let self else { return }
+            let resolved = await self.sourceManager
                 .resolveSources(for: currentItem, episode: currentEp, verifyReachability: true)
                 .filter { $0.isAvailable && $0.format.isDirectlyPlayable }
+            guard !Task.isCancelled else { return }
+            self.alternativeSources = resolved
         }
-        Task {
-            if let posterURL = selection.mediaItem.posterURL {
-                cachedArtwork = await ImagePipeline.shared.image(
-                    for: posterURL,
-                    targetSize: CGSize(width: 300, height: 450),
-                    scale: 2
-                )
-            }
+        artworkTask?.cancel()
+        artworkTask = Task { [weak self] in
+            guard let self, let posterURL = selection.mediaItem.posterURL else { return }
+            let img = await ImagePipeline.shared.image(
+                for: posterURL,
+                targetSize: CGSize(width: 300, height: 450),
+                scale: 2
+            )
+            guard !Task.isCancelled else { return }
+            self.cachedArtwork = img
         }
     }
 
@@ -245,6 +253,8 @@ public final class PlayerSession {
 
     public func endSession() {
         upNextTask?.cancel()
+        alternativeSourcesTask?.cancel()
+        artworkTask?.cancel()
         persistProgress(force: true)
         engine.teardown()
         pipController.detach()

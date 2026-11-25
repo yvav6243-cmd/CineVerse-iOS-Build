@@ -24,7 +24,8 @@ public final class VideoSourceManager {
         self.inspector = MediaSourceInspector(httpClient: httpClient)
         self.healthChecker = SourceHealthChecker(httpClient: httpClient)
 
-        let fetchClosure: @MainActor (String, Int?, Int?) -> [UserVideoSourceDTO] = { mediaID, season, episode in
+        let fetchClosure: @MainActor (String, Int?, Int?) -> [UserVideoSourceDTO] = { [weak modelContext] mediaID, season, episode in
+            guard let modelContext else { return [] }
             let descriptor = FetchDescriptor<UserVideoSourceRecord>(
                 predicate: #Predicate { $0.mediaID == mediaID },
                 sortBy: [SortDescriptor(\.addedAt, order: .reverse)]

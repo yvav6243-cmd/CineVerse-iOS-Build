@@ -29,7 +29,7 @@ private struct StubPRWikimediaService: WikimediaCinemaServiceProtocol {
 private func makeTestSelection(
     itemID: String = "opencinema:movie:test-hls",
     format: VideoStreamFormat = .hls,
-    urlString: String = "https://devstreaming-cdn.apple.com/videos/streaming/examples/adv_dv_atmos/main.m3u8",
+    urlString: String = "https://test.example.invalid/stream/master.m3u8",
     startPositionSeconds: TimeInterval = 0
 ) -> PreWatchPlaybackSelection {
     let audioEN = AudioTrackOption(id: "audio-en", languageCode: "en", displayName: "English", voiceoverStudio: "Original Mix", isOriginal: true, isDefault: true)
