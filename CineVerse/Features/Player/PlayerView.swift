@@ -83,8 +83,8 @@ public struct PlayerView: View {
                     hasPlayableSource: session.nextSelection != nil,
                     countdownSeconds: session.upNextCountdown,
                     autoplayEnabled: settingsStore.autoplayNext,
-                    onPlayNext: { session.playNextNow() },
                     onToggleAutoplay: { settingsStore.autoplayNext.toggle() },
+                    onPlayNext: { session.playNextNow() },
                     onAddSource: {
                         session.cancelUpNext()
                         showAddNextSourceSheet = true

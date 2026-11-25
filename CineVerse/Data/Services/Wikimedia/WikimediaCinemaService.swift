@@ -36,7 +36,6 @@ public final class WikimediaCinemaService: WikimediaCinemaServiceProtocol, @unch
         let endpoint = Endpoint(
             baseURL: baseURL,
             path: "w/api.php",
-            headers: ["User-Agent": "CineVerse-iOS/2.0 (https://cineverse.app)"],
             queryItems: [
                 URLQueryItem(name: "action", value: "query"),
                 URLQueryItem(name: "titles", value: normalizedTitle),
@@ -44,6 +43,7 @@ public final class WikimediaCinemaService: WikimediaCinemaServiceProtocol, @unch
                 URLQueryItem(name: "viprop", value: "url|size|mediatype|derivatives|timedtext|dimensions"),
                 URLQueryItem(name: "format", value: "json")
             ],
+            headers: ["User-Agent": "CineVerse-iOS/2.0 (https://cineverse.app)"],
             timeoutInterval: 10
         )
         let root = try await httpClient.send(endpoint, as: WikimediaQueryRootDTO.self)
@@ -75,7 +75,6 @@ public final class WikimediaCinemaService: WikimediaCinemaServiceProtocol, @unch
         let endpoint = Endpoint(
             baseURL: baseURL,
             path: "w/api.php",
-            headers: ["User-Agent": "CineVerse-iOS/2.0 (https://cineverse.app)"],
             queryItems: [
                 URLQueryItem(name: "action", value: "query"),
                 URLQueryItem(name: "generator", value: "search"),
@@ -86,6 +85,7 @@ public final class WikimediaCinemaService: WikimediaCinemaServiceProtocol, @unch
                 URLQueryItem(name: "viprop", value: "url|size|mediatype|derivatives|timedtext|dimensions"),
                 URLQueryItem(name: "format", value: "json")
             ],
+            headers: ["User-Agent": "CineVerse-iOS/2.0 (https://cineverse.app)"],
             timeoutInterval: 9
         )
 

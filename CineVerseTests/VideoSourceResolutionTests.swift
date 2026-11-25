@@ -62,24 +62,26 @@ private final class StubReachabilityHTTPClient: HTTPClient, @unchecked Sendable 
         self.contentTypeByHost = contentTypeByHost
     }
 
+    func send<T: Decodable & Sendable>(_ endpoint: Endpoint, as type: T.Type) async throws -> T {
+        throw NetworkError.http(statusCode: 501, message: "Stub")
+    }
+
     func data(_ endpoint: Endpoint) async throws -> (Data, HTTPURLResponse) {
         let host = endpoint.baseURL.host ?? ""
         let code = statusByHost[host] ?? 200
         let contentType = contentTypeByHost[host] ?? "video/mp4"
         guard code < 400 else {
-            throw NetworkError.httpStatus(code: code, message: "HTTP \(code)")
+            throw NetworkError.http(statusCode: code, message: "HTTP \(code)")
         }
-        let response = HTTPURLResponse(
+        guard let response = HTTPURLResponse(
             url: endpoint.baseURL,
             statusCode: code,
             httpVersion: "HTTP/1.1",
             headerFields: ["Content-Type": contentType]
-        )!
+        ) else {
+            throw NetworkError.http(statusCode: -1, message: "Invalid response")
+        }
         return (Data(), response)
-    }
-
-    func decode<T: Decodable & Sendable>(_ endpoint: Endpoint, as type: T.Type, decoder: JSONDecoder) async throws -> T {
-        throw NetworkError.invalidResponse
     }
 }
 

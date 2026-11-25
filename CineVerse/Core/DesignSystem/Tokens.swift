@@ -34,6 +34,7 @@ public enum CVColor {
     public static let secondarySurface = Color(.secondarySystemBackground)
     public static let tertiarySurface = Color(.tertiarySystemBackground)
     public static let background = Color(.systemBackground)
+    public static let canvas = Color(.systemBackground)
     public static let groupedBackground = Color(.systemGroupedBackground)
     public static let primaryLabel = Color(.label)
     public static let secondaryLabel = Color(.secondaryLabel)
@@ -42,6 +43,7 @@ public enum CVColor {
     public static let ratingGold = Color(hex: "#FFD60A")
     public static let success = Color(hex: "#30D158")
     public static let warning = Color(hex: "#FF9F0A")
+    public static let amber = Color(hex: "#FF9F0A")
     public static let danger = Color(hex: "#FF453A")
 
     public static var irisGradient: LinearGradient {
@@ -50,6 +52,10 @@ public enum CVColor {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
+    }
+
+    public static var brandGradient: LinearGradient {
+        irisGradient
     }
 }
 

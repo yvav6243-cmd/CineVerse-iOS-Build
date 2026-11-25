@@ -373,8 +373,8 @@ public final class PlayerEngine {
         if let fps = try? await first.load(.nominalFrameRate), fps > 0 {
             cachedTrackFPS = Double(fps)
         }
-        if let hasHDR = try? await first.load(.hasMediaCharacteristic(.containsHDRVideo)) {
-            cachedDynamicRange = hasHDR ? "HDR" : "SDR"
+        if let chars = try? await first.load(.mediaCharacteristics) {
+            cachedDynamicRange = chars.contains(.containsHDRVideo) ? "HDR" : "SDR"
         }
         if let descs = try? await first.load(.formatDescriptions), let desc = descs.first {
             let subType = CMFormatDescriptionGetMediaSubType(desc)

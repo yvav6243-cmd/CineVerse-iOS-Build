@@ -137,64 +137,66 @@ public struct PlaybackSetupPanel: View {
                 .foregroundStyle(.secondary)
 
             ForEach(viewModel.playableSources) { src in
-                let isSelected = src.id == selected.id
-                Button {
-                    Haptics.selection()
-                    Task { await viewModel.selectSource(src) }
-                } label: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 6) {
-                            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(isSelected ? CVColor.iris : .secondary)
-                            Text(src.providerName)
-                                .font(CVFont.caption.weight(.bold))
-                                .foregroundStyle(.primary)
-                                .lineLimit(1)
-                            Spacer()
-                            badgePill(src.highestQualityLabel, tint: CVColor.amber)
-                            badgePill(src.format.badgeText, tint: CVColor.iris)
-                        }
+                sourceCardRow(src, isSelected: src.id == selected.id)
+            }
+        }
+    }
 
-                        HStack(spacing: 8) {
-                            Label(src.healthStatus.badgeLabel, systemImage: "checkmark.shield.fill")
-                                .foregroundStyle(CVColor.success)
-                            Text("·")
-                            Text(durationText(for: src))
-                            Text("·")
-                            Text(src.isAvailable ? "Available" : "Offline")
-                        }
-                        .font(CVFont.micro)
-                        .foregroundStyle(.secondary)
+    private func sourceCardRow(_ src: VideoSourceDescriptor, isSelected: Bool) -> some View {
+        let fillColor = isSelected ? CVColor.iris.opacity(0.14) : Color(.tertiarySystemFill).opacity(0.45)
+        let borderColor = isSelected ? CVColor.iris.opacity(0.65) : Color.clear
+        return Button {
+            Haptics.selection()
+            Task { await viewModel.selectSource(src) }
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(isSelected ? CVColor.iris : .secondary)
+                    Text(src.providerName)
+                        .font(CVFont.caption.weight(.bold))
+                        .foregroundStyle(.primary)
                         .lineLimit(1)
-
-                        HStack(spacing: 8) {
-                            Label("Audio: \(src.audioSummaryLabel)", systemImage: "waveform")
-                            Text("·")
-                            Label("Subs: \(src.subtitleSummaryLabel)", systemImage: "captions.bubble")
-                        }
-                        .font(CVFont.micro)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    }
-                    .padding(CVSpacing.sm)
-                    .background(
-                        isSelected ? CVColor.iris.opacity(0.14) : Color(.tertiarySystemFill).opacity(0.45),
-                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(isSelected ? CVColor.iris.opacity(0.65) : Color.clear, lineWidth: 1)
-                    )
+                    Spacer()
+                    badgePill(src.highestQualityLabel, tint: CVColor.amber)
+                    badgePill(src.format.badgeText, tint: CVColor.iris)
                 }
-                .buttonStyle(.plain)
-                .contextMenu {
-                    if viewModel.isUserSource(src) {
-                        Button(role: .destructive) {
-                            Task { await viewModel.deleteSource(src) }
-                        } label: {
-                            Label("Remove Source", systemImage: "trash")
-                        }
-                    }
+
+                HStack(spacing: 8) {
+                    Label(src.healthStatus.badgeLabel, systemImage: "checkmark.shield.fill")
+                        .foregroundStyle(CVColor.success)
+                    Text("·")
+                    Text(durationText(for: src))
+                    Text("·")
+                    Text(src.isAvailable ? "Available" : "Offline")
+                }
+                .font(CVFont.micro)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+                HStack(spacing: 8) {
+                    Label("Audio: \(src.audioSummaryLabel)", systemImage: "waveform")
+                    Text("·")
+                    Label("Subs: \(src.subtitleSummaryLabel)", systemImage: "captions.bubble")
+                }
+                .font(CVFont.micro)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+            .padding(CVSpacing.sm)
+            .background(fillColor, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(borderColor, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            if viewModel.isUserSource(src) {
+                Button(role: .destructive) {
+                    Task { await viewModel.deleteSource(src) }
+                } label: {
+                    Label("Remove Source", systemImage: "trash")
                 }
             }
         }
